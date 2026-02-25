@@ -1,0 +1,48 @@
+---
+title: Gemba Management System
+description: A shopfloor manufacturing management platform for issue tracking, production monitoring, safety management, and Gemba walks.
+template: splash
+hero:
+  tagline: Digitize your shopfloor management — from issue tracking to Gemba walks.
+  actions:
+    - text: Get Started
+      link: /getting-started/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/jakobgabriel/gemba-management-app
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## Key Features
+
+<CardGrid stagger>
+  <Card title="Issue Management" icon="warning">
+    Create, escalate, and resolve shopfloor issues with a structured L1 → L2 →
+    L3 escalation workflow.
+  </Card>
+  <Card title="Production Tracking" icon="bars">
+    Log hourly production data per workstation — track actual vs. target output
+    in real time.
+  </Card>
+  <Card title="Safety Cross" icon="heart">
+    Daily shift-level safety tracking with days-without-accident counters and
+    visual calendar views.
+  </Card>
+  <Card title="Gemba Walks" icon="magnifier">
+    Structured 5-step observation process (Safety, Quality, Delivery, Cost,
+    People) with scoring and findings.
+  </Card>
+</CardGrid>
+
+## Architecture
+
+The Gemba Management System is designed as a **cloud-native application** deployable via **Docker** and **Kubernetes**, with **ArgoCD** for GitOps-based continuous delivery.
+
+- **Frontend:** React + TypeScript + Vite
+- **Backend:** Node.js (Express/Fastify) or Go
+- **Database:** PostgreSQL 16
+- **Cache:** Redis 7
+- **Deployment:** Helm + ArgoCD on Kubernetes

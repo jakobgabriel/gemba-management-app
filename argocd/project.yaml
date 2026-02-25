@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gemba-platform
+  namespace: argocd
+spec:
+  description: Gemba Management Platform project
+  sourceRepos:
+    - https://github.com/jakobgabriel/gemba-management-app.git
+  destinations:
+    - namespace: gemba
+      server: https://kubernetes.default.svc
+    - namespace: gemba-staging
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: apps
+      kind: "*"
+    - group: networking.k8s.io
+      kind: "*"
+    - group: autoscaling
+      kind: "*"
+    - group: policy
+      kind: "*"
