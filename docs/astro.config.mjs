@@ -21,6 +21,22 @@ export default defineConfig({
           ],
         },
         {
+          label: "App",
+          items: [
+            { label: "Overview", slug: "app/overview" },
+            { label: "Login", slug: "app/login" },
+            { label: "Level 1 - Team", slug: "app/level1" },
+            { label: "Level 2 - Area", slug: "app/level2" },
+            { label: "Level 3 - Plant", slug: "app/level3" },
+            { label: "Issue Management", slug: "app/issues" },
+            { label: "Safety Cross", slug: "app/safety" },
+            { label: "Gemba Walk", slug: "app/gemba-walk" },
+            { label: "Shift Handover", slug: "app/handover" },
+            { label: "Analytics", slug: "app/analytics" },
+            { label: "Admin Configuration", slug: "app/admin" },
+          ],
+        },
+        {
           label: "Architecture",
           items: [
             { label: "Overview", slug: "architecture/overview" },
