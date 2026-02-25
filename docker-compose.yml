@@ -1,14 +1,64 @@
 services:
   frontend:
-    build: .
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://gemba:gemba@db:5432/gemba
+      REDIS_URL: redis://cache:6379
+      JWT_SECRET: ${JWT_SECRET:-gemba-dev-secret-change-in-production}
+      PORT: "3000"
+      CORS_ORIGIN: "*"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3
+      start_period: 10s
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_DB: gemba
+      POSTGRES_USER: gemba
+      POSTGRES_PASSWORD: gemba
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemba"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
   docs:
     build:
@@ -17,3 +67,9 @@ services:
     ports:
       - "4321:8080"
     restart: unless-stopped
+    profiles:
+      - docs
+
+volumes:
+  pgdata:
+  redisdata:

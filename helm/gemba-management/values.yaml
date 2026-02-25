@@ -2,10 +2,45 @@
 
 replicaCount: 2
 
+# Frontend image
 image:
-  repository: ghcr.io/jakobgabriel/gemba-management-app
+  repository: ghcr.io/jakobgabriel/gemba-management-app/frontend
   pullPolicy: IfNotPresent
   tag: ""  # Overrides the chart appVersion
+
+# Backend image
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/jakobgabriel/gemba-management-app/backend
+    pullPolicy: IfNotPresent
+    tag: ""
+  service:
+    port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  env:
+    NODE_ENV: production
+    PORT: "3000"
+    CORS_ORIGIN: "*"
+
+# PostgreSQL
+postgresql:
+  enabled: true
+  auth:
+    database: gemba
+    username: gemba
+    existingSecret: gemba-db-credentials
+
+# Redis
+redis:
+  enabled: true
 
 imagePullSecrets: []
 nameOverride: ""
