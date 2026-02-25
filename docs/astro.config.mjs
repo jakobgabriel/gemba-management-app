@@ -9,13 +9,9 @@ export default defineConfig({
       title: "Gemba Management",
       description:
         "Documentation for the Gemba Management System — a shopfloor manufacturing management platform.",
-      social: [
-        {
-          icon: "github",
-          label: "GitHub",
-          href: "https://github.com/jakobgabriel/gemba-management-app",
-        },
-      ],
+      social: {
+        github: "https://github.com/jakobgabriel/gemba-management-app",
+      },
       sidebar: [
         {
           label: "Getting Started",
