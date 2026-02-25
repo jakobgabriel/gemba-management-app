@@ -2,6 +2,8 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 
 export default defineConfig({
+  site: "https://jakobgabriel.github.io",
+  base: "/gemba-management-app",
   integrations: [
     starlight({
       title: "Gemba Management",
