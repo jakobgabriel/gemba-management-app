@@ -34,6 +34,8 @@ export default function GembaWalkPage() {
   const [teamFeedback, setTeamFeedback] = useState('');
   const [walkIssues, setWalkIssues] = useState<any[]>([]);
   const [issueForm, setIssueForm] = useState({ title: '', priority: 'MEDIUM', area_text: '', description: '', category_id: '' });
+  const [detailWalk, setDetailWalk] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => { loadWalks(); }, []);
 
@@ -100,6 +102,14 @@ export default function GembaWalkPage() {
     setWalkIssues(prev => [...prev, { ...issueForm, source: 'gemba' }]);
     setIssueForm({ title: '', priority: 'MEDIUM', area_text: '', description: '', category_id: '' });
     setShowIssueModal(false);
+  };
+
+  const viewWalkDetail = async (walkId: string) => {
+    try {
+      const res = await api.getGembaWalk(walkId);
+      setDetailWalk(res.data);
+      setShowDetailModal(true);
+    } catch { /* ignore */ }
   };
 
   const toggleChecklist = (idx: number) => {
@@ -329,7 +339,7 @@ export default function GembaWalkPage() {
           </div>
           <table className="data-table">
             <thead>
-              <tr><th>Date</th><th>Leader</th><th>{t('area')}</th><th>Duration</th><th>Issues</th><th>{t('status')}</th></tr>
+              <tr><th>Date</th><th>Leader</th><th>{t('area')}</th><th>Duration</th><th>Issues</th><th>{t('status')}</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {walks.filter(w => w.status === 'completed').map(walk => (
@@ -340,12 +350,67 @@ export default function GembaWalkPage() {
                   <td>{walk.duration_min} min</td>
                   <td>{walk.issues_count || 0}</td>
                   <td><span className="issue-badge resolved">{walk.status}</span></td>
+                  <td>
+                    <button className="btn btn-small" onClick={() => viewWalkDetail(walk.id)}>View</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Walk Detail Modal */}
+      <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title="Gemba Walk Details">
+        {detailWalk && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div><strong>Title:</strong> {detailWalk.title}</div>
+              <div><strong>Status:</strong> <span className={`issue-badge ${detailWalk.status}`}>{detailWalk.status}</span></div>
+              <div><strong>Target Areas:</strong> {detailWalk.target_areas}</div>
+              <div><strong>Focus:</strong> {detailWalk.focus}</div>
+              <div><strong>Participants:</strong> {detailWalk.participants}</div>
+              <div><strong>Duration:</strong> {detailWalk.duration_min} min</div>
+              <div><strong>Started:</strong> {new Date(detailWalk.started_at).toLocaleString()}</div>
+              {detailWalk.completed_at && <div><strong>Completed:</strong> {new Date(detailWalk.completed_at).toLocaleString()}</div>}
+            </div>
+            {detailWalk.team_feedback && (
+              <div className="info-box" style={{ marginBottom: '1rem' }}>
+                <div className="info-box-title">Team Feedback</div>
+                <div>{detailWalk.team_feedback}</div>
+              </div>
+            )}
+            {detailWalk.findings && detailWalk.findings.length > 0 && (
+              <div className="info-box" style={{ marginBottom: '1rem' }}>
+                <div className="info-box-title">Findings ({detailWalk.findings.length})</div>
+                {detailWalk.findings.map((f: any, i: number) => (
+                  <div key={i} style={{ padding: '0.5rem 0', borderBottom: '1px solid #ddd' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong>{f.finding_type}</strong>
+                      {f.severity && <span className={`issue-badge ${f.severity.toLowerCase()}`}>{f.severity}</span>}
+                    </div>
+                    <div>{f.observation}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {detailWalk.issues && detailWalk.issues.length > 0 && (
+              <div className="info-box">
+                <div className="info-box-title">Issues Created ({detailWalk.issues.length})</div>
+                {detailWalk.issues.map((issue: any) => (
+                  <div key={issue.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #ddd' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong>{issue.title}</strong>
+                      <span className={`issue-badge ${issue.priority?.toLowerCase()}`}>{issue.priority}</span>
+                    </div>
+                    {issue.description && <div style={{ fontSize: '0.9em', color: '#666' }}>{issue.description}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

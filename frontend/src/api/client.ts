@@ -374,6 +374,163 @@ class ApiClient {
   getCurrentHandoverNotes() {
     return this.get<HandoverNote[]>('/handover/notes/current');
   }
+
+  // ========================================================================
+  // Issues – additional methods
+  // ========================================================================
+
+  deleteIssue(id: string) {
+    return this.delete<void>(`/issues/${id}`);
+  }
+
+  // ========================================================================
+  // Production – additional methods
+  // ========================================================================
+
+  deleteProductionEntry(id: string) {
+    return this.delete<void>(`/production/entries/${id}`);
+  }
+
+  // ========================================================================
+  // Safety – additional methods
+  // ========================================================================
+
+  updateSafetyEntry(id: string, data: Partial<SafetyEntry>) {
+    return this.put<SafetyEntry>(`/safety/entries/${id}`, data);
+  }
+
+  deleteSafetyEntry(id: string) {
+    return this.delete<void>(`/safety/entries/${id}`);
+  }
+
+  getSafetyStatsWithParams(params?: Record<string, string>) {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<Record<string, unknown>>(`/safety/stats${query}`);
+  }
+
+  // ========================================================================
+  // Handover – additional methods
+  // ========================================================================
+
+  updateHandoverNote(id: string, data: Partial<HandoverNote>) {
+    return this.put<HandoverNote>(`/handover/notes/${id}`, data);
+  }
+
+  deleteHandoverNote(id: string) {
+    return this.delete<void>(`/handover/notes/${id}`);
+  }
+
+  // ========================================================================
+  // Configuration – additional methods
+  // ========================================================================
+
+  updateCategory(id: string, data: Partial<Category>) {
+    return this.put<Category>(`/config/categories/${id}`, data);
+  }
+
+  updateArea(id: string, data: Partial<Area>) {
+    return this.put<Area>(`/config/areas/${id}`, data);
+  }
+
+  updateTeam(id: string, data: Partial<Team>) {
+    return this.put<Team>(`/config/teams/${id}`, data);
+  }
+
+  updateOperator(id: string, data: Partial<Operator>) {
+    return this.put<Operator>(`/config/operators/${id}`, data);
+  }
+
+  createShift(data: Partial<Shift>) {
+    return this.post<Shift>('/config/shifts', data);
+  }
+
+  updateShift(id: string, data: Partial<Shift>) {
+    return this.put<Shift>(`/config/shifts/${id}`, data);
+  }
+
+  deleteShift(id: string) {
+    return this.delete<void>(`/config/shifts/${id}`);
+  }
+
+  // ========================================================================
+  // User Management
+  // ========================================================================
+
+  getUsers() {
+    return this.get<User[]>('/users');
+  }
+
+  getUser(id: string) {
+    return this.get<User>(`/users/${id}`);
+  }
+
+  createUser(data: Partial<User>) {
+    return this.post<User>('/users', data);
+  }
+
+  updateUser(id: string, data: Partial<User>) {
+    return this.put<User>(`/users/${id}`, data);
+  }
+
+  deleteUser(id: string) {
+    return this.delete<void>(`/users/${id}`);
+  }
+
+  // ========================================================================
+  // Bulk Operations
+  // ========================================================================
+
+  bulkCreateIssues(items: Partial<Issue>[]) {
+    return this.post<Issue[]>('/bulk/issues/bulk-create', { items });
+  }
+
+  bulkUpdateIssues(items: Partial<Issue>[]) {
+    return this.post<Issue[]>('/bulk/issues/bulk-update', { items });
+  }
+
+  bulkDeleteIssues(ids: string[]) {
+    return this.post<void>('/bulk/issues/bulk-delete', { ids });
+  }
+
+  bulkCreateProduction(items: Partial<ProductionEntry>[]) {
+    return this.post<ProductionEntry[]>('/bulk/production/bulk-create', { items });
+  }
+
+  bulkCreateSafety(items: Partial<SafetyEntry>[]) {
+    return this.post<SafetyEntry[]>('/bulk/safety/bulk-create', { items });
+  }
+
+  bulkImportConfig(entity: string, items: unknown[]) {
+    return this.post<unknown>('/bulk/config/bulk-import', { entity, items });
+  }
+
+  // ========================================================================
+  // Export
+  // ========================================================================
+
+  exportIssues(params?: Record<string, string>) {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<unknown>(`/bulk/export/issues${query}`);
+  }
+
+  exportProduction(params?: Record<string, string>) {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<unknown>(`/bulk/export/production${query}`);
+  }
+
+  exportSafety(params?: Record<string, string>) {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<unknown>(`/bulk/export/safety${query}`);
+  }
+
+  exportConfig(entity: string) {
+    return this.get<unknown>(`/bulk/export/config?entity=${entity}`);
+  }
+
+  exportGembaWalks(params?: Record<string, string>) {
+    const query = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.get<unknown>(`/bulk/export/gemba-walks${query}`);
+  }
 }
 
 // Export singleton instance

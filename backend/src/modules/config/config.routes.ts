@@ -199,6 +199,62 @@ router.post('/categories', requireRole(99), async (req: Request, res: Response) 
   }
 });
 
+// PUT /categories/:id (admin)
+router.put('/categories/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, color, is_active } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(description);
+    }
+    if (color !== undefined) {
+      updates.push(`color = $${paramIndex++}`);
+      params.push(color);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.categories SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Category not found');
+    }
+
+    res.json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // DELETE /categories/:id (admin)
 router.delete('/categories/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
@@ -267,6 +323,62 @@ router.post('/areas', requireRole(99), async (req: Request, res: Response) => {
     );
 
     res.status(201).json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// PUT /areas/:id (admin)
+router.put('/areas/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, plant_id, is_active } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(description);
+    }
+    if (plant_id !== undefined) {
+      updates.push(`plant_id = $${paramIndex++}`);
+      params.push(plant_id);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.areas SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Area not found');
+    }
+
+    res.json(success(result.rows[0]));
   } catch (err) {
     if (err instanceof AppError) {
       res.status(err.statusCode).json({
@@ -359,6 +471,62 @@ router.post('/teams', requireRole(99), async (req: Request, res: Response) => {
   }
 });
 
+// PUT /teams/:id (admin)
+router.put('/teams/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, description, plant_id, is_active } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(description);
+    }
+    if (plant_id !== undefined) {
+      updates.push(`plant_id = $${paramIndex++}`);
+      params.push(plant_id);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.teams SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Team not found');
+    }
+
+    res.json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // DELETE /teams/:id (admin)
 router.delete('/teams/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
@@ -439,6 +607,66 @@ router.post('/operators', requireRole(99), async (req: Request, res: Response) =
   }
 });
 
+// PUT /operators/:id (admin)
+router.put('/operators/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, employee_code, team_id, workstation_id, is_active } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (employee_code !== undefined) {
+      updates.push(`employee_code = $${paramIndex++}`);
+      params.push(employee_code);
+    }
+    if (team_id !== undefined) {
+      updates.push(`team_id = $${paramIndex++}`);
+      params.push(team_id);
+    }
+    if (workstation_id !== undefined) {
+      updates.push(`workstation_id = $${paramIndex++}`);
+      params.push(workstation_id);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.operators SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Operator not found');
+    }
+
+    res.json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // DELETE /operators/:id (admin)
 router.delete('/operators/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
@@ -477,6 +705,123 @@ router.get('/shifts', requireRole(1), async (_req: Request, res: Response) => {
        ORDER BY start_time ASC`,
     );
     res.json(success(result.rows));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// POST /shifts (admin)
+router.post('/shifts', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { name, start_time, end_time, plant_id, is_active = true } = req.body;
+
+    if (!name) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Shift name is required');
+    }
+
+    const id = uuidv4();
+    const result = await query(
+      `INSERT INTO gemba.shifts (id, name, start_time, end_time, plant_id, is_active, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
+      [id, name, start_time || null, end_time || null, plant_id || null, is_active],
+    );
+
+    res.status(201).json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// PUT /shifts/:id (admin)
+router.put('/shifts/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, start_time, end_time, plant_id, is_active } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name);
+    }
+    if (start_time !== undefined) {
+      updates.push(`start_time = $${paramIndex++}`);
+      params.push(start_time);
+    }
+    if (end_time !== undefined) {
+      updates.push(`end_time = $${paramIndex++}`);
+      params.push(end_time);
+    }
+    if (plant_id !== undefined) {
+      updates.push(`plant_id = $${paramIndex++}`);
+      params.push(plant_id);
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(is_active);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    updates.push('updated_at = NOW()');
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.shifts SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Shift not found');
+    }
+
+    res.json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// DELETE /shifts/:id (admin)
+router.delete('/shifts/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      `DELETE FROM gemba.shifts WHERE id = $1 RETURNING id`,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Shift not found');
+    }
+
+    res.json(success({ message: 'Shift deleted successfully' }));
   } catch (err) {
     if (err instanceof AppError) {
       res.status(err.statusCode).json({

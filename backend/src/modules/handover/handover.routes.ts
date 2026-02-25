@@ -135,6 +135,113 @@ router.post('/notes', requireRole(1), async (req: Request, res: Response) => {
   }
 });
 
+// PUT /notes/:id - Update handover note
+router.put('/notes/:id', requireRole(1), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      handover_date,
+      shift_id,
+      to_user_id,
+      production_summary,
+      quality_notes,
+      safety_notes,
+      pending_issues,
+      notes,
+    } = req.body;
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (handover_date !== undefined) {
+      updates.push(`handover_date = $${paramIndex++}`);
+      params.push(handover_date);
+    }
+    if (shift_id !== undefined) {
+      updates.push(`shift_id = $${paramIndex++}`);
+      params.push(shift_id);
+    }
+    if (to_user_id !== undefined) {
+      updates.push(`to_user_id = $${paramIndex++}`);
+      params.push(to_user_id);
+    }
+    if (production_summary !== undefined) {
+      updates.push(`production_summary = $${paramIndex++}`);
+      params.push(production_summary);
+    }
+    if (quality_notes !== undefined) {
+      updates.push(`quality_notes = $${paramIndex++}`);
+      params.push(quality_notes);
+    }
+    if (safety_notes !== undefined) {
+      updates.push(`safety_notes = $${paramIndex++}`);
+      params.push(safety_notes);
+    }
+    if (pending_issues !== undefined) {
+      updates.push(`pending_issues = $${paramIndex++}`);
+      params.push(pending_issues);
+    }
+    if (notes !== undefined) {
+      updates.push(`notes = $${paramIndex++}`);
+      params.push(notes);
+    }
+
+    if (updates.length === 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
+    }
+
+    params.push(id);
+
+    const result = await query(
+      `UPDATE gemba.handover_notes SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params,
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Handover note not found');
+    }
+
+    res.json(success(result.rows[0]));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
+// DELETE /notes/:id - Delete handover note
+router.delete('/notes/:id', requireRole(2), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'DELETE FROM gemba.handover_notes WHERE id = $1 RETURNING id',
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Handover note not found');
+    }
+
+    res.json(success({ message: 'Handover note deleted successfully' }));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // GET /notes/current - Get current shift's notes
 router.get('/notes/current', requireRole(1), async (_req: Request, res: Response) => {
   try {

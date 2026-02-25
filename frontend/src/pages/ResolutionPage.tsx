@@ -10,7 +10,8 @@ export default function ResolutionPage() {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [resolveForm, setResolveForm] = useState({
-    resolution: '', downtime_prevented: 0, defects_reduced: 0, cost_savings: 0,
+    root_cause: '', corrective_action: '', preventive_action: '',
+    impact_description: '', impact_value: 0,
   });
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +31,7 @@ export default function ResolutionPage() {
     try {
       await api.resolveIssue(selectedIssue.id, resolveForm);
       setShowResolveModal(false);
-      setResolveForm({ resolution: '', downtime_prevented: 0, defects_reduced: 0, cost_savings: 0 });
+      setResolveForm({ root_cause: '', corrective_action: '', preventive_action: '', impact_description: '', impact_value: 0 });
       loadIssues();
     } catch { /* ignore */ }
     setLoading(false);
@@ -80,29 +81,35 @@ export default function ResolutionPage() {
             <div style={{ marginTop: '0.5rem', color: '#666' }}>{selectedIssue?.description}</div>
           </div>
           <div className="form-group">
-            <label className="form-label">Resolution / Root Cause</label>
-            <textarea className="form-textarea" required value={resolveForm.resolution}
-              onChange={e => setResolveForm(f => ({ ...f, resolution: e.target.value }))}
-              placeholder="Describe the root cause and corrective actions taken..." />
+            <label className="form-label">{t('rootCause')}</label>
+            <textarea className="form-textarea" required value={resolveForm.root_cause}
+              onChange={e => setResolveForm(f => ({ ...f, root_cause: e.target.value }))}
+              placeholder="Describe the root cause of the issue..." />
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('correctiveActions')}</label>
+            <textarea className="form-textarea" required value={resolveForm.corrective_action}
+              onChange={e => setResolveForm(f => ({ ...f, corrective_action: e.target.value }))}
+              placeholder="Describe the corrective actions taken..." />
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('preventiveMeasures')}</label>
+            <textarea className="form-textarea" value={resolveForm.preventive_action}
+              onChange={e => setResolveForm(f => ({ ...f, preventive_action: e.target.value }))}
+              placeholder="Describe preventive measures to avoid recurrence..." />
           </div>
           <div className="card" style={{ background: '#fafafa' }}>
             <div className="card-title" style={{ marginBottom: '1rem' }}>Impact Assessment</div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Downtime Prevented (min)</label>
-                <input className="form-input" type="number" min="0" value={resolveForm.downtime_prevented}
-                  onChange={e => setResolveForm(f => ({ ...f, downtime_prevented: +e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Defects Reduced</label>
-                <input className="form-input" type="number" min="0" value={resolveForm.defects_reduced}
-                  onChange={e => setResolveForm(f => ({ ...f, defects_reduced: +e.target.value }))} />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Impact Description</label>
+              <input className="form-input" value={resolveForm.impact_description}
+                onChange={e => setResolveForm(f => ({ ...f, impact_description: e.target.value }))}
+                placeholder="e.g., Prevented 4h downtime, reduced defects by 200" />
             </div>
             <div className="form-group">
-              <label className="form-label">Cost Savings ($)</label>
-              <input className="form-input" type="number" min="0" step="0.01" value={resolveForm.cost_savings}
-                onChange={e => setResolveForm(f => ({ ...f, cost_savings: +e.target.value }))} />
+              <label className="form-label">Estimated Savings ($)</label>
+              <input className="form-input" type="number" min="0" step="0.01" value={resolveForm.impact_value}
+                onChange={e => setResolveForm(f => ({ ...f, impact_value: +e.target.value }))} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>

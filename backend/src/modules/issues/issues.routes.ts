@@ -470,6 +470,42 @@ router.post('/:id/resolve', requireRole(2), async (req: Request, res: Response) 
   }
 });
 
+// DELETE /:id - Delete issue and related records (admin only)
+router.delete('/:id', requireRole(99), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Verify issue exists
+    const issueResult = await query('SELECT id FROM gemba.issues WHERE id = $1', [id]);
+    if (issueResult.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Issue not found');
+    }
+
+    // Delete related escalations
+    await query('DELETE FROM gemba.issue_escalations WHERE issue_id = $1', [id]);
+
+    // Delete related resolutions
+    await query('DELETE FROM gemba.issue_resolutions WHERE issue_id = $1', [id]);
+
+    // Delete related AI suggestions
+    await query('DELETE FROM gemba.ai_suggestions WHERE issue_id = $1', [id]);
+
+    // Delete the issue
+    await query('DELETE FROM gemba.issues WHERE id = $1', [id]);
+
+    res.json(success({ message: 'Issue deleted successfully' }));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // GET /:id/history - Get escalations and resolution for an issue
 router.get('/:id/history', requireRole(2), async (req: Request, res: Response) => {
   try {

@@ -196,6 +196,33 @@ router.put('/entries/:id', requireRole(1), async (req: Request, res: Response) =
   }
 });
 
+// DELETE /entries/:id - Delete safety entry
+router.delete('/entries/:id', requireRole(2), async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'DELETE FROM gemba.safety_entries WHERE id = $1 RETURNING id',
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Safety entry not found');
+    }
+
+    res.json(success({ message: 'Safety entry deleted successfully' }));
+  } catch (err) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        data: null, meta: null,
+        errors: [{ code: err.code, message: err.message }],
+      });
+      return;
+    }
+    throw err;
+  }
+});
+
 // GET /stats - Safety statistics
 router.get('/stats', requireRole(2), async (req: Request, res: Response) => {
   try {

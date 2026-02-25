@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n/index.js';
 import { api } from '../api/client.js';
-import type { DashboardData } from '../types/index.js';
+import IssueDetailModal from '../components/common/IssueDetailModal.js';
+import type { DashboardData, Issue } from '../types/index.js';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [breakdown, setBreakdown] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -104,7 +106,12 @@ export default function DashboardPage() {
           </div>
           <div className="issue-list">
             {dashboard.recent_issues.slice(0, 5).map(issue => (
-              <div key={issue.id} className="issue-item">
+              <div
+                key={issue.id}
+                className="issue-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedIssue(issue)}
+              >
                 <div className="issue-header">
                   <span className="issue-title-text">#{issue.issue_number} {issue.title}</span>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -121,6 +128,14 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+      )}
+      {/* Issue Detail Modal (read-only) */}
+      {selectedIssue && (
+        <IssueDetailModal
+          issue={selectedIssue}
+          onClose={() => setSelectedIssue(null)}
+          readOnly
+        />
       )}
     </div>
   );
