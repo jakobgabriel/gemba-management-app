@@ -1,0 +1,9 @@
+.git
+.github
+docs
+helm
+argocd
+*.md
+!gemba-management.html
+node_modules
+.env*

@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gemba-management-staging
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: gemba-management
+    app.kubernetes.io/part-of: gemba-platform
+    environment: staging
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/jakobgabriel/gemba-management-app.git
+    targetRevision: develop
+    path: helm/gemba-management
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: replicaCount
+          value: "1"
+        - name: ingress.enabled
+          value: "true"
+        - name: ingress.hosts[0].host
+          value: gemba-staging.example.com
+        - name: ingress.hosts[0].paths[0].path
+          value: /
+        - name: ingress.hosts[0].paths[0].pathType
+          value: Prefix
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gemba-staging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  revisionHistoryLimit: 5

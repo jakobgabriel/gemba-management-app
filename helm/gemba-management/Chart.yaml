@@ -1,0 +1,17 @@
+apiVersion: v2
+name: gemba-management
+description: A Helm chart for the Gemba Management System - Shopfloor Management Platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Jakob Gabriel
+    url: https://github.com/jakobgabriel
+keywords:
+  - gemba
+  - manufacturing
+  - shopfloor
+  - management
+home: https://github.com/jakobgabriel/gemba-management-app
+sources:
+  - https://github.com/jakobgabriel/gemba-management-app
