@@ -15,23 +15,27 @@ export default function SafetyCrossPage() {
   const [entries, setEntries] = useState<SafetyEntry[]>([]);
   const [daysWithout, setDaysWithout] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [form, setForm] = useState({ shift_id: '', team_id: '', status: 'safe' as SafetyStatus, notes: '' });
   const [loading, setLoading] = useState(false);
-  const [currentMonth] = useState(new Date().getMonth());
-  const [currentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [safetyStats, setSafetyStats] = useState<Record<string, unknown> | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [currentMonth, currentYear]);
 
   const loadData = async () => {
     try {
       const startDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
       const endDate = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${new Date(currentYear, currentMonth + 1, 0).getDate()}`;
-      const [entriesRes, daysRes] = await Promise.all([
+      const [entriesRes, daysRes, statsRes] = await Promise.all([
         api.getSafetyEntries({ from_date: startDate, to_date: endDate }),
         api.getDaysWithoutAccident(),
+        api.getSafetyStatsWithParams({ from_date: startDate, to_date: endDate }),
       ]);
       setEntries(entriesRes.data || []);
       setDaysWithout((daysRes.data as any)?.days || 0);
+      setSafetyStats(statsRes.data || null);
     } catch { /* ignore */ }
   };
 
@@ -40,13 +44,44 @@ export default function SafetyCrossPage() {
     setLoading(true);
     try {
       await api.createSafetyEntry({
-        entry_date: new Date().toISOString().split('T')[0],
+        entry_date: selectedDate,
         ...form,
       });
       setShowModal(false);
       loadData();
     } catch { /* ignore */ }
     setLoading(false);
+  };
+
+  const handleDayClick = (day: number) => {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedDate(dateStr);
+    setForm({ shift_id: '', team_id: '', status: 'safe', notes: '' });
+    setShowModal(true);
+  };
+
+  const goToPreviousMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(y => y - 1);
+    } else {
+      setCurrentMonth(m => m - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(y => y + 1);
+    } else {
+      setCurrentMonth(m => m + 1);
+    }
+  };
+
+  const goToToday = () => {
+    const now = new Date();
+    setCurrentMonth(now.getMonth());
+    setCurrentYear(now.getFullYear());
   };
 
   // Build calendar grid
@@ -64,33 +99,85 @@ export default function SafetyCrossPage() {
     return 'safe';
   };
 
+  // Derive stats from safetyStats response or fall back to local entry counts
+  const totalEntries = safetyStats && typeof (safetyStats as any).total_entries === 'number'
+    ? (safetyStats as any).total_entries
+    : entries.length;
+
+  const byStatus = (safetyStats as any)?.by_status || null;
+  const byRiskLevel = (safetyStats as any)?.by_risk_level || null;
+
   return (
     <div>
-      {/* Stats */}
+      {/* Safety Stats Section */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-value" style={{ color: '#28a745' }}>{daysWithout}</div>
           <div className="stat-label">{t('daysWithoutAccident')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{entries.filter(e => e.status === 'safe').length}</div>
+          <div className="stat-value">{totalEntries}</div>
+          <div className="stat-label">Total Entries</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: '#28a745' }}>
+            {byStatus?.safe ?? entries.filter(e => e.status === 'safe').length}
+          </div>
           <div className="stat-label">{t('safe')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#ffc107' }}>{entries.filter(e => e.status === 'near-miss').length}</div>
+          <div className="stat-value" style={{ color: '#ffc107' }}>
+            {byStatus?.['near-miss'] ?? entries.filter(e => e.status === 'near-miss').length}
+          </div>
           <div className="stat-label">{t('nearMiss')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#dc3545' }}>{entries.filter(e => e.status === 'incident').length}</div>
+          <div className="stat-value" style={{ color: '#dc3545' }}>
+            {byStatus?.incident ?? entries.filter(e => e.status === 'incident').length}
+          </div>
           <div className="stat-label">{t('incident')}</div>
         </div>
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: '#6c757d' }}>
+            {byStatus?.['not-reported'] ?? entries.filter(e => e.status === 'not-reported').length}
+          </div>
+          <div className="stat-label">Not Reported</div>
+        </div>
       </div>
+
+      {/* Risk Level Breakdown (from API stats) */}
+      {byRiskLevel && (
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div className="card-header">
+            <span className="card-title">Risk Level Breakdown</span>
+          </div>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', padding: '0.5rem 0' }}>
+            {Object.entries(byRiskLevel).map(([level, count]) => (
+              <div key={level} style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.25rem' }}>{String(count)}</div>
+                <div style={{ color: '#666', fontSize: '0.85rem', textTransform: 'capitalize' }}>{level}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Safety Cross Calendar */}
       <div className="card">
         <div className="card-header">
-          <span className="card-title">{t('safetyCross')} - {monthNames[currentMonth]} {currentYear}</span>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>{t('markSafetyStatus')}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="btn btn-sm" onClick={goToPreviousMonth}>&larr; Prev</button>
+            <span className="card-title" style={{ margin: 0 }}>
+              {t('safetyCross')} - {monthNames[currentMonth]} {currentYear}
+            </span>
+            <button className="btn btn-sm" onClick={goToNextMonth}>Next &rarr;</button>
+            <button className="btn btn-sm" onClick={goToToday}>Today</button>
+          </div>
+          <button className="btn btn-primary" onClick={() => {
+            setSelectedDate(new Date().toISOString().split('T')[0]);
+            setForm({ shift_id: '', team_id: '', status: 'safe', notes: '' });
+            setShowModal(true);
+          }}>{t('markSafetyStatus')}</button>
         </div>
         <div className="safety-grid">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
@@ -104,7 +191,13 @@ export default function SafetyCrossPage() {
             const status = getStatusForDay(day);
             return (
               <div key={day} className={`safety-cell ${status || ''}`}
-                style={{ background: status ? STATUS_COLORS[status] : '#fff' }}>
+                style={{
+                  background: status ? STATUS_COLORS[status] : '#fff',
+                  cursor: 'pointer',
+                  border: '1px solid #dee2e6',
+                }}
+                onClick={() => handleDayClick(day)}
+                title={`Click to mark safety status for ${monthNames[currentMonth]} ${day}`}>
                 <div style={{ fontWeight: 'bold' }}>{day}</div>
                 {status && <div style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>{status}</div>}
               </div>
@@ -143,8 +236,13 @@ export default function SafetyCrossPage() {
       )}
 
       {/* Mark Safety Status Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={t('markSafetyStatus')}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={`${t('markSafetyStatus')} - ${selectedDate}`}>
         <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input className="form-input" type="date" value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)} />
+          </div>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">{t('shift')}</label>

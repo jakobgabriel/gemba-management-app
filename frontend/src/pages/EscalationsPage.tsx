@@ -31,7 +31,7 @@ export default function EscalationsPage() {
     setLoading(true);
     try {
       await api.escalateIssue(selectedIssue.id, {
-        to_level: selectedIssue.level + 1,
+        target_level: selectedIssue.level + 1,
         ...escalationForm,
       });
       setShowEscalateModal(false);

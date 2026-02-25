@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n/index.js';
 import { api } from '../api/client.js';
+import Modal from '../components/common/Modal.js';
 import type { Issue } from '../types/index.js';
 
 export default function Level3Page() {
@@ -8,6 +9,9 @@ export default function Level3Page() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [dashboard, setDashboard] = useState<any>(null);
+  const [efficiency, setEfficiency] = useState<any>(null);
+  const [resolveIssue, setResolveIssue] = useState<Issue | null>(null);
+  const [resolveForm, setResolveForm] = useState({ root_cause: '', corrective_action: '', preventive_action: '' });
 
   useEffect(() => {
     loadData();
@@ -15,14 +19,26 @@ export default function Level3Page() {
 
   const loadData = async () => {
     try {
-      const [issuesRes, statsRes, dashRes] = await Promise.all([
+      const [issuesRes, statsRes, dashRes, effRes] = await Promise.all([
         api.getIssues({ level: 3, per_page: 20 }),
         api.getIssueStats(),
         api.getDashboard().catch(() => ({ data: null })),
+        api.getProductionEfficiency().catch(() => ({ data: null })),
       ]);
       setIssues(issuesRes.data || []);
       setStats(statsRes.data);
       setDashboard(dashRes.data);
+      setEfficiency(effRes.data);
+    } catch { /* ignore */ }
+  };
+
+  const handleResolve = async () => {
+    if (!resolveIssue || !resolveForm.root_cause) return;
+    try {
+      await api.resolveIssue(resolveIssue.id, resolveForm);
+      setResolveIssue(null);
+      setResolveForm({ root_cause: '', corrective_action: '', preventive_action: '' });
+      loadData();
     } catch { /* ignore */ }
   };
 
@@ -67,6 +83,29 @@ export default function Level3Page() {
         </div>
       )}
 
+      {/* Production Efficiency */}
+      {efficiency?.overall && (
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Production Efficiency</span>
+          </div>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-value">{efficiency.overall.efficiency ? `${Math.round(efficiency.overall.efficiency)}%` : 'N/A'}</div>
+              <div className="stat-label">Overall Efficiency</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{efficiency.overall.total_target || 0}</div>
+              <div className="stat-label">Total Target</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{efficiency.overall.total_actual || 0}</div>
+              <div className="stat-label">Total Actual</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Escalated to L3 */}
       <div className="card">
         <div className="card-header">
@@ -92,6 +131,11 @@ export default function Level3Page() {
                   <span>{new Date(issue.created_at).toLocaleDateString()}</span>
                 </div>
                 {issue.description && <div className="issue-description">{issue.description}</div>}
+                {issue.status !== 'RESOLVED' && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button className="btn btn-small btn-primary" onClick={() => setResolveIssue(issue)}>{t('resolve')}</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -122,6 +166,29 @@ export default function Level3Page() {
           </table>
         </div>
       )}
+
+      {/* Resolve Modal */}
+      <Modal isOpen={!!resolveIssue} onClose={() => setResolveIssue(null)} title={`${t('resolve')}: ${resolveIssue?.title || ''}`}>
+        <div className="form-group">
+          <label className="form-label">{t('rootCause')}</label>
+          <textarea className="form-textarea" value={resolveForm.root_cause}
+            onChange={e => setResolveForm(f => ({ ...f, root_cause: e.target.value }))} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">{t('correctiveActions')}</label>
+          <textarea className="form-textarea" value={resolveForm.corrective_action}
+            onChange={e => setResolveForm(f => ({ ...f, corrective_action: e.target.value }))} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">{t('preventiveMeasures')}</label>
+          <textarea className="form-textarea" value={resolveForm.preventive_action}
+            onChange={e => setResolveForm(f => ({ ...f, preventive_action: e.target.value }))} />
+        </div>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-primary" onClick={handleResolve} disabled={!resolveForm.root_cause}>{t('resolve')}</button>
+          <button className="btn" onClick={() => setResolveIssue(null)}>{t('cancel')}</button>
+        </div>
+      </Modal>
     </div>
   );
 }

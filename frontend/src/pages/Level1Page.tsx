@@ -14,6 +14,14 @@ export default function Level1Page() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Production summary state
+  const [prodSummary, setProdSummary] = useState<Record<string, unknown> | null>(null);
+
+  // Production edit state
+  const [editingProdId, setEditingProdId] = useState<string | null>(null);
+  const [showEditProdModal, setShowEditProdModal] = useState(false);
+  const [editProdForm, setEditProdForm] = useState({ hour: 0, target: 0, actual: 0, notes: '' });
+
   // Issue form state
   const [issueForm, setIssueForm] = useState({
     title: '', category_id: '', priority: 'MEDIUM' as const,
@@ -28,7 +36,10 @@ export default function Level1Page() {
   }, []);
 
   useEffect(() => {
-    if (selectedMachine) loadProductionData();
+    if (selectedMachine) {
+      loadProductionData();
+      loadProductionSummary();
+    }
   }, [selectedMachine]);
 
   const loadIssues = async () => {
@@ -43,6 +54,14 @@ export default function Level1Page() {
       const today = new Date().toISOString().split('T')[0];
       const res = await api.getProductionEntries({ workstation_id: selectedMachine, date: today });
       setProductionData(res.data || []);
+    } catch { /* ignore */ }
+  };
+
+  const loadProductionSummary = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await api.getProductionSummary({ workstation_id: selectedMachine, date: today });
+      setProdSummary(res.data || null);
     } catch { /* ignore */ }
   };
 
@@ -76,12 +95,45 @@ export default function Level1Page() {
         entry_date: today, ...prodForm,
       });
       loadProductionData();
+      loadProductionSummary();
       setProdForm(prev => ({ ...prev, actual: 0, notes: '' }));
     } catch { /* ignore */ }
     setLoading(false);
   };
 
+  // --- Production Entry Edit Handlers ---
+
+  const handleEditProductionEntry = (entry: ProductionEntry) => {
+    setEditingProdId(entry.id);
+    setEditProdForm({
+      hour: entry.hour,
+      target: entry.target,
+      actual: entry.actual,
+      notes: entry.notes || '',
+    });
+    setShowEditProdModal(true);
+  };
+
+  const handleUpdateProductionEntry = async () => {
+    if (!editingProdId) return;
+    setLoading(true);
+    try {
+      await api.updateProductionEntry(editingProdId, editProdForm);
+      setShowEditProdModal(false);
+      setEditingProdId(null);
+      loadProductionData();
+      loadProductionSummary();
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
   const machine = workstations.find(ws => ws.id === selectedMachine);
+
+  // Compute local summary from production data
+  const totalTarget = productionData.reduce((sum, e) => sum + e.target, 0);
+  const totalActual = productionData.reduce((sum, e) => sum + e.actual, 0);
+  const overallEfficiency = totalTarget > 0 ? Math.round((totalActual / totalTarget) * 100) : 0;
+  const totalVariance = totalActual - totalTarget;
 
   if (!selectedMachine) {
     return (
@@ -121,6 +173,42 @@ export default function Level1Page() {
         </div>
       </div>
 
+      {/* Production Summary Stats */}
+      {productionData.length > 0 && (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-value">{productionData.length}</div>
+            <div className="stat-label">Entries Today</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{totalTarget}</div>
+            <div className="stat-label">Total {t('target')}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{totalActual}</div>
+            <div className="stat-label">Total {t('actual')}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: totalVariance >= 0 ? 'green' : 'red' }}>
+              {totalVariance >= 0 ? '+' : ''}{totalVariance}
+            </div>
+            <div className="stat-label">{t('variance')}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value" style={{ color: overallEfficiency >= 100 ? 'green' : overallEfficiency >= 80 ? '#ffc107' : 'red' }}>
+              {overallEfficiency}%
+            </div>
+            <div className="stat-label">{t('efficiency')}</div>
+          </div>
+          {prodSummary && typeof (prodSummary as any).oee === 'number' && (
+            <div className="stat-card">
+              <div className="stat-value">{(prodSummary as any).oee}%</div>
+              <div className="stat-label">OEE</div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Production Entry */}
       <div className="card">
         <div className="card-header">
@@ -159,12 +247,13 @@ export default function Level1Page() {
             <thead>
               <tr>
                 <th>{t('hour')}</th><th>{t('target')}</th><th>{t('actual')}</th>
-                <th>{t('variance')}</th><th>{t('efficiency')}</th><th>{t('notes')}</th>
+                <th>{t('variance')}</th><th>{t('efficiency')}</th><th>{t('notes')}</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {productionData.sort((a, b) => a.hour - b.hour).map(entry => (
-                <tr key={entry.id}>
+                <tr key={entry.id} style={{ cursor: 'pointer' }}
+                  onClick={() => handleEditProductionEntry(entry)}>
                   <td>{String(entry.hour).padStart(2, '0')}:00</td>
                   <td>{entry.target}</td><td>{entry.actual}</td>
                   <td style={{ color: entry.actual - entry.target >= 0 ? 'green' : 'red' }}>
@@ -172,6 +261,11 @@ export default function Level1Page() {
                   </td>
                   <td>{entry.target > 0 ? Math.round((entry.actual / entry.target) * 100) : 0}%</td>
                   <td>{entry.notes}</td>
+                  <td>
+                    <button className="btn btn-sm" onClick={(e) => { e.stopPropagation(); handleEditProductionEntry(entry); }}>
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -268,6 +362,45 @@ export default function Level1Page() {
             <button className="btn" type="button" onClick={() => setShowIssueModal(false)}>{t('cancel')}</button>
           </div>
         </form>
+      </Modal>
+
+      {/* Edit Production Entry Modal */}
+      <Modal isOpen={showEditProdModal} onClose={() => { setShowEditProdModal(false); setEditingProdId(null); }}
+        title="Edit Production Entry">
+        <div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">{t('hour')}</label>
+              <input className="form-input" type="number" min="0" max="23"
+                value={editProdForm.hour}
+                onChange={e => setEditProdForm(f => ({ ...f, hour: +e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('target')}</label>
+              <input className="form-input" type="number" min="0"
+                value={editProdForm.target}
+                onChange={e => setEditProdForm(f => ({ ...f, target: +e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">{t('actual')}</label>
+              <input className="form-input" type="number" min="0"
+                value={editProdForm.actual}
+                onChange={e => setEditProdForm(f => ({ ...f, actual: +e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('notes')}</label>
+              <input className="form-input" type="text"
+                value={editProdForm.notes}
+                onChange={e => setEditProdForm(f => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-primary" onClick={handleUpdateProductionEntry} disabled={loading}>{t('save')}</button>
+            <button className="btn" onClick={() => { setShowEditProdModal(false); setEditingProdId(null); }}>{t('cancel')}</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

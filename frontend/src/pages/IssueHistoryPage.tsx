@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n/index.js';
 import { useApp } from '../store/AppContext.js';
 import { api } from '../api/client.js';
+import IssueDetailModal from '../components/common/IssueDetailModal.js';
 import type { Issue } from '../types/index.js';
 
 export default function IssueHistoryPage() {
@@ -11,6 +12,8 @@ export default function IssueHistoryPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ status: '', priority: '', category_id: '', search: '' });
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => { loadIssues(); }, [page, filters]);
 
@@ -70,7 +73,7 @@ export default function IssueHistoryPage() {
               <tr>
                 <th>#</th><th>{t('issueTitle')}</th><th>L</th>
                 <th>{t('category')}</th><th>{t('priority')}</th><th>{t('status')}</th>
-                <th>{t('area')}</th><th>Date</th>
+                <th>{t('area')}</th><th>Date</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -84,6 +87,15 @@ export default function IssueHistoryPage() {
                   <td><span className={`issue-badge ${issue.status.toLowerCase()}`}>{issue.status}</span></td>
                   <td>{issue.area_text}</td>
                   <td>{new Date(issue.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => { setSelectedIssue(issue); setShowDetail(true); }}
+                      type="button"
+                    >
+                      View
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -99,6 +111,18 @@ export default function IssueHistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Issue Detail Modal */}
+      {showDetail && (
+        <IssueDetailModal
+          issue={selectedIssue}
+          onClose={() => { setShowDetail(false); setSelectedIssue(null); }}
+          onUpdate={(updatedIssue) => {
+            setSelectedIssue(updatedIssue);
+            loadIssues();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import gembaWalksRoutes from './modules/gemba-walks/routes.js';
 import configRoutes from './modules/config/routes.js';
 import analyticsRoutes from './modules/analytics/routes.js';
 import handoverRoutes from './modules/handover/routes.js';
+import bulkRoutes from './modules/bulk/routes.js';
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/v1/gemba-walks', authenticate, gembaWalksRoutes);
 app.use('/api/v1/config', authenticate, configRoutes);
 app.use('/api/v1/analytics', authenticate, analyticsRoutes);
 app.use('/api/v1/handover', authenticate, handoverRoutes);
+app.use('/api/v1/bulk', authenticate, bulkRoutes);
 
 // ---------------------------------------------------------------------------
 // Global error handler (must be registered last)
