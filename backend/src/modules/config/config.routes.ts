@@ -16,8 +16,8 @@ router.use(authenticate);
 router.get('/workstations', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, code, area_id, is_active, created_at, updated_at
-       FROM gemba.workstations
+      `SELECT id, machine_code, name, area_id, team_id, default_part, is_active, created_at, updated_at
+       FROM gemba_config.workstations
        ORDER BY name ASC`,
     );
     res.json(success(result.rows));
@@ -36,18 +36,18 @@ router.get('/workstations', requireRole(1), async (_req: Request, res: Response)
 // POST /workstations (admin)
 router.post('/workstations', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, code, area_id, is_active = true } = req.body;
+    const { name, machine_code, area_id, team_id, default_part, is_active = true } = req.body;
 
-    if (!name) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Workstation name is required');
+    if (!name || !machine_code || !area_id) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Workstation name, machine_code, and area_id are required');
     }
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.workstations (id, name, code, area_id, is_active, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+      `INSERT INTO gemba_config.workstations (id, plant_id, machine_code, name, area_id, team_id, default_part, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
        RETURNING *`,
-      [id, name, code || null, area_id || null, is_active],
+      [id, req.user!.plantId, machine_code, name, area_id, team_id || null, default_part || null, is_active],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -67,7 +67,7 @@ router.post('/workstations', requireRole(99), async (req: Request, res: Response
 router.put('/workstations/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, code, area_id, is_active } = req.body;
+    const { name, machine_code, area_id, team_id, default_part, is_active } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -77,13 +77,21 @@ router.put('/workstations/:id', requireRole(99), async (req: Request, res: Respo
       updates.push(`name = $${paramIndex++}`);
       params.push(name);
     }
-    if (code !== undefined) {
-      updates.push(`code = $${paramIndex++}`);
-      params.push(code);
+    if (machine_code !== undefined) {
+      updates.push(`machine_code = $${paramIndex++}`);
+      params.push(machine_code);
     }
     if (area_id !== undefined) {
       updates.push(`area_id = $${paramIndex++}`);
       params.push(area_id);
+    }
+    if (team_id !== undefined) {
+      updates.push(`team_id = $${paramIndex++}`);
+      params.push(team_id);
+    }
+    if (default_part !== undefined) {
+      updates.push(`default_part = $${paramIndex++}`);
+      params.push(default_part);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
@@ -98,7 +106,7 @@ router.put('/workstations/:id', requireRole(99), async (req: Request, res: Respo
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.workstations SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.workstations SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -125,7 +133,7 @@ router.delete('/workstations/:id', requireRole(99), async (req: Request, res: Re
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.workstations WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.workstations WHERE id = $1 RETURNING id`,
       [id],
     );
 
@@ -152,9 +160,9 @@ router.delete('/workstations/:id', requireRole(99), async (req: Request, res: Re
 router.get('/categories', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, description, color, is_active, created_at
-       FROM gemba.categories
-       ORDER BY name ASC`,
+      `SELECT id, name, sort_order, created_at
+       FROM gemba_config.issue_categories
+       ORDER BY sort_order ASC, name ASC`,
     );
     res.json(success(result.rows));
   } catch (err) {
@@ -172,7 +180,7 @@ router.get('/categories', requireRole(1), async (_req: Request, res: Response) =
 // POST /categories (admin)
 router.post('/categories', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, description, color, is_active = true } = req.body;
+    const { name, sort_order } = req.body;
 
     if (!name) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Category name is required');
@@ -180,10 +188,10 @@ router.post('/categories', requireRole(99), async (req: Request, res: Response) 
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.categories (id, name, description, color, is_active, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO gemba_config.issue_categories (id, plant_id, name, sort_order, created_at)
+       VALUES ($1, $2, $3, $4, NOW())
        RETURNING *`,
-      [id, name, description || null, color || null, is_active],
+      [id, req.user!.plantId, name, sort_order || 0],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -203,7 +211,7 @@ router.post('/categories', requireRole(99), async (req: Request, res: Response) 
 router.put('/categories/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, color, is_active } = req.body;
+    const { name, sort_order } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -213,28 +221,19 @@ router.put('/categories/:id', requireRole(99), async (req: Request, res: Respons
       updates.push(`name = $${paramIndex++}`);
       params.push(name);
     }
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      params.push(description);
-    }
-    if (color !== undefined) {
-      updates.push(`color = $${paramIndex++}`);
-      params.push(color);
-    }
-    if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
-      params.push(is_active);
+    if (sort_order !== undefined) {
+      updates.push(`sort_order = $${paramIndex++}`);
+      params.push(sort_order);
     }
 
     if (updates.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
     }
 
-    updates.push('updated_at = NOW()');
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.categories SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.issue_categories SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -261,7 +260,7 @@ router.delete('/categories/:id', requireRole(99), async (req: Request, res: Resp
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.categories WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.issue_categories WHERE id = $1 RETURNING id`,
       [id],
     );
 
@@ -288,8 +287,8 @@ router.delete('/categories/:id', requireRole(99), async (req: Request, res: Resp
 router.get('/areas', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, description, plant_id, is_active, created_at
-       FROM gemba.areas
+      `SELECT id, name, code, plant_id, created_at, updated_at
+       FROM gemba_config.areas
        ORDER BY name ASC`,
     );
     res.json(success(result.rows));
@@ -308,7 +307,7 @@ router.get('/areas', requireRole(1), async (_req: Request, res: Response) => {
 // POST /areas (admin)
 router.post('/areas', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, description, plant_id, is_active = true } = req.body;
+    const { name, code } = req.body;
 
     if (!name) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Area name is required');
@@ -316,10 +315,10 @@ router.post('/areas', requireRole(99), async (req: Request, res: Response) => {
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.areas (id, name, description, plant_id, is_active, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO gemba_config.areas (id, plant_id, name, code, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
        RETURNING *`,
-      [id, name, description || null, plant_id || null, is_active],
+      [id, req.user!.plantId, name, code || null],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -339,7 +338,7 @@ router.post('/areas', requireRole(99), async (req: Request, res: Response) => {
 router.put('/areas/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, plant_id, is_active } = req.body;
+    const { name, code } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -349,17 +348,9 @@ router.put('/areas/:id', requireRole(99), async (req: Request, res: Response) =>
       updates.push(`name = $${paramIndex++}`);
       params.push(name);
     }
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      params.push(description);
-    }
-    if (plant_id !== undefined) {
-      updates.push(`plant_id = $${paramIndex++}`);
-      params.push(plant_id);
-    }
-    if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
-      params.push(is_active);
+    if (code !== undefined) {
+      updates.push(`code = $${paramIndex++}`);
+      params.push(code);
     }
 
     if (updates.length === 0) {
@@ -370,7 +361,7 @@ router.put('/areas/:id', requireRole(99), async (req: Request, res: Response) =>
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.areas SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.areas SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -397,7 +388,7 @@ router.delete('/areas/:id', requireRole(99), async (req: Request, res: Response)
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.areas WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.areas WHERE id = $1 RETURNING id`,
       [id],
     );
 
@@ -424,8 +415,8 @@ router.delete('/areas/:id', requireRole(99), async (req: Request, res: Response)
 router.get('/teams', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, description, plant_id, is_active, created_at
-       FROM gemba.teams
+      `SELECT id, name, plant_id, created_at, updated_at
+       FROM gemba_config.teams
        ORDER BY name ASC`,
     );
     res.json(success(result.rows));
@@ -444,7 +435,7 @@ router.get('/teams', requireRole(1), async (_req: Request, res: Response) => {
 // POST /teams (admin)
 router.post('/teams', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, description, plant_id, is_active = true } = req.body;
+    const { name } = req.body;
 
     if (!name) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Team name is required');
@@ -452,10 +443,10 @@ router.post('/teams', requireRole(99), async (req: Request, res: Response) => {
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.teams (id, name, description, plant_id, is_active, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW())
+      `INSERT INTO gemba_config.teams (id, plant_id, name, created_at, updated_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
        RETURNING *`,
-      [id, name, description || null, plant_id || null, is_active],
+      [id, req.user!.plantId, name],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -475,7 +466,7 @@ router.post('/teams', requireRole(99), async (req: Request, res: Response) => {
 router.put('/teams/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, plant_id, is_active } = req.body;
+    const { name } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -484,18 +475,6 @@ router.put('/teams/:id', requireRole(99), async (req: Request, res: Response) =>
     if (name !== undefined) {
       updates.push(`name = $${paramIndex++}`);
       params.push(name);
-    }
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      params.push(description);
-    }
-    if (plant_id !== undefined) {
-      updates.push(`plant_id = $${paramIndex++}`);
-      params.push(plant_id);
-    }
-    if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
-      params.push(is_active);
     }
 
     if (updates.length === 0) {
@@ -506,7 +485,7 @@ router.put('/teams/:id', requireRole(99), async (req: Request, res: Response) =>
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.teams SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.teams SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -533,7 +512,7 @@ router.delete('/teams/:id', requireRole(99), async (req: Request, res: Response)
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.teams WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.teams WHERE id = $1 RETURNING id`,
       [id],
     );
 
@@ -560,8 +539,8 @@ router.delete('/teams/:id', requireRole(99), async (req: Request, res: Response)
 router.get('/operators', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, employee_code, team_id, workstation_id, is_active, created_at
-       FROM gemba.operators
+      `SELECT id, name, team_id, user_id, is_active, created_at
+       FROM gemba_config.operators
        ORDER BY name ASC`,
     );
     res.json(success(result.rows));
@@ -580,7 +559,7 @@ router.get('/operators', requireRole(1), async (_req: Request, res: Response) =>
 // POST /operators (admin)
 router.post('/operators', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, employee_code, team_id, workstation_id, is_active = true } = req.body;
+    const { name, team_id, user_id, is_active = true } = req.body;
 
     if (!name) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Operator name is required');
@@ -588,10 +567,10 @@ router.post('/operators', requireRole(99), async (req: Request, res: Response) =
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.operators (id, name, employee_code, team_id, workstation_id, is_active, created_at)
+      `INSERT INTO gemba_config.operators (id, plant_id, name, team_id, user_id, is_active, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
-      [id, name, employee_code || null, team_id || null, workstation_id || null, is_active],
+      [id, req.user!.plantId, name, team_id || null, user_id || null, is_active],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -611,7 +590,7 @@ router.post('/operators', requireRole(99), async (req: Request, res: Response) =
 router.put('/operators/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, employee_code, team_id, workstation_id, is_active } = req.body;
+    const { name, team_id, user_id, is_active } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -621,17 +600,13 @@ router.put('/operators/:id', requireRole(99), async (req: Request, res: Response
       updates.push(`name = $${paramIndex++}`);
       params.push(name);
     }
-    if (employee_code !== undefined) {
-      updates.push(`employee_code = $${paramIndex++}`);
-      params.push(employee_code);
-    }
     if (team_id !== undefined) {
       updates.push(`team_id = $${paramIndex++}`);
       params.push(team_id);
     }
-    if (workstation_id !== undefined) {
-      updates.push(`workstation_id = $${paramIndex++}`);
-      params.push(workstation_id);
+    if (user_id !== undefined) {
+      updates.push(`user_id = $${paramIndex++}`);
+      params.push(user_id);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
@@ -642,11 +617,10 @@ router.put('/operators/:id', requireRole(99), async (req: Request, res: Response
       throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
     }
 
-    updates.push('updated_at = NOW()');
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.operators SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.operators SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -673,7 +647,7 @@ router.delete('/operators/:id', requireRole(99), async (req: Request, res: Respo
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.operators WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.operators WHERE id = $1 RETURNING id`,
       [id],
     );
 
@@ -700,9 +674,9 @@ router.delete('/operators/:id', requireRole(99), async (req: Request, res: Respo
 router.get('/shifts', requireRole(1), async (_req: Request, res: Response) => {
   try {
     const result = await query(
-      `SELECT id, name, start_time, end_time, is_active, created_at
-       FROM gemba.shifts
-       ORDER BY start_time ASC`,
+      `SELECT id, name, start_time, end_time, sort_order, created_at
+       FROM gemba_config.shift_definitions
+       ORDER BY sort_order ASC, start_time ASC`,
     );
     res.json(success(result.rows));
   } catch (err) {
@@ -720,7 +694,7 @@ router.get('/shifts', requireRole(1), async (_req: Request, res: Response) => {
 // POST /shifts (admin)
 router.post('/shifts', requireRole(99), async (req: Request, res: Response) => {
   try {
-    const { name, start_time, end_time, plant_id, is_active = true } = req.body;
+    const { name, start_time, end_time, sort_order } = req.body;
 
     if (!name) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Shift name is required');
@@ -728,10 +702,10 @@ router.post('/shifts', requireRole(99), async (req: Request, res: Response) => {
 
     const id = uuidv4();
     const result = await query(
-      `INSERT INTO gemba.shifts (id, name, start_time, end_time, plant_id, is_active, created_at)
+      `INSERT INTO gemba_config.shift_definitions (id, plant_id, name, start_time, end_time, sort_order, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())
        RETURNING *`,
-      [id, name, start_time || null, end_time || null, plant_id || null, is_active],
+      [id, req.user!.plantId, name, start_time || null, end_time || null, sort_order || 0],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -751,7 +725,7 @@ router.post('/shifts', requireRole(99), async (req: Request, res: Response) => {
 router.put('/shifts/:id', requireRole(99), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, start_time, end_time, plant_id, is_active } = req.body;
+    const { name, start_time, end_time, sort_order } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -769,24 +743,19 @@ router.put('/shifts/:id', requireRole(99), async (req: Request, res: Response) =
       updates.push(`end_time = $${paramIndex++}`);
       params.push(end_time);
     }
-    if (plant_id !== undefined) {
-      updates.push(`plant_id = $${paramIndex++}`);
-      params.push(plant_id);
-    }
-    if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
-      params.push(is_active);
+    if (sort_order !== undefined) {
+      updates.push(`sort_order = $${paramIndex++}`);
+      params.push(sort_order);
     }
 
     if (updates.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
     }
 
-    updates.push('updated_at = NOW()');
     params.push(id);
 
     const result = await query(
-      `UPDATE gemba.shifts SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      `UPDATE gemba_config.shift_definitions SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
       params,
     );
 
@@ -813,7 +782,7 @@ router.delete('/shifts/:id', requireRole(99), async (req: Request, res: Response
     const { id } = req.params;
 
     const result = await query(
-      `DELETE FROM gemba.shifts WHERE id = $1 RETURNING id`,
+      `DELETE FROM gemba_config.shift_definitions WHERE id = $1 RETURNING id`,
       [id],
     );
 

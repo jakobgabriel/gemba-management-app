@@ -43,7 +43,7 @@ async function loginAs(page, username) {
   const token = await apiLogin(username);
 
   // Navigate to login page first
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded', timeout: 15000 });
   await delay(300);
 
   // Set token and reload - the app will redirect to default route
@@ -52,14 +52,14 @@ async function loginAs(page, username) {
   }, token);
 
   // Reload to trigger auth with the token set
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
 
   // Wait for the sidebar to appear (proves auth loaded)
   try {
     await page.waitForSelector('.sidebar', { timeout: 8000 });
   } catch {
     // Might still be on login page, try reload
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForSelector('.sidebar', { timeout: 5000 });
   }
   await delay(1500);
@@ -127,7 +127,7 @@ async function waitForContent(page) {
   try {
     // ==================== LOGIN PAGE ====================
     console.log('Login page...');
-    await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await delay(1500);
     await screenshot(page, 'login');
 

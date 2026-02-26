@@ -36,7 +36,7 @@ router.get('/dashboard', requireRole(2), async (_req: Request, res: Response) =>
       `SELECT i.id, i.title, i.status, i.level, i.priority,
               c.name AS category_name, i.created_at
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
        ORDER BY i.created_at DESC
        LIMIT 10`,
     );
@@ -86,7 +86,7 @@ router.get('/issues/breakdown', requireRole(2), async (_req: Request, res: Respo
     const breakdownResult = await query(
       `SELECT c.name AS category, COUNT(*) AS count
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
        GROUP BY c.name
        ORDER BY count DESC`,
     );
@@ -156,7 +156,7 @@ router.get('/issues/resolution-times', requireRole(3), async (req: Request, res:
          ROUND(AVG(EXTRACT(EPOCH FROM (r.created_at - i.created_at)) / 3600)::numeric, 2) AS avg_hours
        FROM gemba.issue_resolutions r
        JOIN gemba.issues i ON r.issue_id = i.id
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
        ${whereClause}
        GROUP BY c.name
        ORDER BY avg_hours DESC`,
@@ -198,11 +198,11 @@ router.get('/production/efficiency', requireRole(2), async (req: Request, res: R
     let paramIndex = 1;
 
     if (from_date) {
-      conditions.push(`pe.production_date >= $${paramIndex++}`);
+      conditions.push(`pe.entry_date >= $${paramIndex++}`);
       params.push(from_date);
     }
     if (to_date) {
-      conditions.push(`pe.production_date <= $${paramIndex++}`);
+      conditions.push(`pe.entry_date <= $${paramIndex++}`);
       params.push(to_date);
     }
     if (workstation_id) {
@@ -215,10 +215,10 @@ router.get('/production/efficiency', requireRole(2), async (req: Request, res: R
     // Overall efficiency
     const overallResult = await query(
       `SELECT
-         SUM(pe.actual_qty) AS total_actual,
-         SUM(pe.target_qty) AS total_target,
-         CASE WHEN SUM(pe.target_qty) > 0
-           THEN ROUND((SUM(pe.actual_qty)::numeric / SUM(pe.target_qty)::numeric) * 100, 2)
+         SUM(pe.actual) AS total_actual,
+         SUM(pe.target) AS total_target,
+         CASE WHEN SUM(pe.target) > 0
+           THEN ROUND((SUM(pe.actual)::numeric / SUM(pe.target)::numeric) * 100, 2)
            ELSE 0
          END AS efficiency_pct
        FROM gemba.production_entries pe
@@ -229,17 +229,17 @@ router.get('/production/efficiency', requireRole(2), async (req: Request, res: R
     // Daily efficiency trend
     const dailyResult = await query(
       `SELECT
-         pe.production_date,
-         SUM(pe.actual_qty) AS actual,
-         SUM(pe.target_qty) AS target,
-         CASE WHEN SUM(pe.target_qty) > 0
-           THEN ROUND((SUM(pe.actual_qty)::numeric / SUM(pe.target_qty)::numeric) * 100, 2)
+         pe.entry_date,
+         SUM(pe.actual) AS actual,
+         SUM(pe.target) AS target,
+         CASE WHEN SUM(pe.target) > 0
+           THEN ROUND((SUM(pe.actual)::numeric / SUM(pe.target)::numeric) * 100, 2)
            ELSE 0
          END AS efficiency_pct
        FROM gemba.production_entries pe
        ${whereClause}
-       GROUP BY pe.production_date
-       ORDER BY pe.production_date ASC`,
+       GROUP BY pe.entry_date
+       ORDER BY pe.entry_date ASC`,
       params,
     );
 
@@ -247,14 +247,14 @@ router.get('/production/efficiency', requireRole(2), async (req: Request, res: R
     const byWorkstationResult = await query(
       `SELECT
          w.name AS workstation_name,
-         SUM(pe.actual_qty) AS actual,
-         SUM(pe.target_qty) AS target,
-         CASE WHEN SUM(pe.target_qty) > 0
-           THEN ROUND((SUM(pe.actual_qty)::numeric / SUM(pe.target_qty)::numeric) * 100, 2)
+         SUM(pe.actual) AS actual,
+         SUM(pe.target) AS target,
+         CASE WHEN SUM(pe.target) > 0
+           THEN ROUND((SUM(pe.actual)::numeric / SUM(pe.target)::numeric) * 100, 2)
            ELSE 0
          END AS efficiency_pct
        FROM gemba.production_entries pe
-       LEFT JOIN gemba.workstations w ON pe.workstation_id = w.id
+       LEFT JOIN gemba_config.workstations w ON pe.workstation_id = w.id
        ${whereClause}
        GROUP BY w.name
        ORDER BY efficiency_pct DESC`,
@@ -270,7 +270,7 @@ router.get('/production/efficiency', requireRole(2), async (req: Request, res: R
         efficiency_pct: parseFloat(overall.efficiency_pct) || 0,
       },
       daily_trend: dailyResult.rows.map((r) => ({
-        date: r.production_date,
+        date: r.entry_date,
         actual: parseInt(r.actual, 10),
         target: parseInt(r.target, 10),
         efficiency_pct: parseFloat(r.efficiency_pct),
@@ -354,7 +354,7 @@ router.post('/ai/query', requireRole(2), async (req: Request, res: Response) => 
               c.name AS category_name,
               (${scoreExpression}) AS relevance_score
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
        WHERE ${filterExpression}
        ORDER BY relevance_score DESC, i.created_at DESC
        LIMIT 20`,
@@ -467,7 +467,7 @@ router.post('/ai/report', requireRole(3), async (req: Request, res: Response) =>
       const breakdownResult = await query(
         `SELECT c.name AS category, COUNT(*) AS count
          FROM gemba.issues i
-         LEFT JOIN gemba.categories c ON i.category_id = c.id
+         LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
          ${catWhereClause}
          GROUP BY c.name
          ORDER BY count DESC`,

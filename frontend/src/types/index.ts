@@ -218,7 +218,9 @@ export interface ApiError {
 
 export interface DashboardData {
   total_issues: number;
-  by_status: Record<IssueStatus, number>;
-  by_level: Record<string, number>;
+  open_issues: number;
+  escalated_issues: number;
+  by_status: Array<{ status: string; count: number }>;
+  by_level: Array<{ level: number; count: number }>;
   recent_issues: Issue[];
 }

@@ -60,7 +60,7 @@ export default function Level1Page() {
   const loadProductionSummary = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const res = await api.getProductionSummary({ workstation_id: selectedMachine, date: today });
+      const res = await api.getProductionByWorkstation(selectedMachine, { date: today });
       setProdSummary(res.data || null);
     } catch { /* ignore */ }
   };

@@ -124,8 +124,8 @@ router.get('/', requireRole(1), async (req: Request, res: Response) => {
               i.area_id, a.name AS area_name,
               i.source, i.created_by, i.created_at, i.updated_at
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
-       LEFT JOIN gemba.areas a ON i.area_id = a.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.areas a ON i.area_id = a.id
        ${whereClause}
        ORDER BY ${sortField} ${order}
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
@@ -158,7 +158,7 @@ router.get('/stats', requireRole(2), async (_req: Request, res: Response) => {
     const byCategoryResult = await query(
       `SELECT c.name AS category, COUNT(*) AS count
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
        GROUP BY c.name ORDER BY count DESC`,
     );
 
@@ -199,12 +199,12 @@ router.get('/:id', requireRole(1), async (req: Request, res: Response) => {
               i.category_id, c.name AS category_name,
               i.area_id, a.name AS area_name,
               i.source, i.created_by,
-              u.username AS created_by_username, u.full_name AS created_by_name,
+              u.username AS created_by_username, u.display_name AS created_by_name,
               i.created_at, i.updated_at
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
-       LEFT JOIN gemba.areas a ON i.area_id = a.id
-       LEFT JOIN gemba.users u ON i.created_by = u.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.areas a ON i.area_id = a.id
+       LEFT JOIN gemba_config.users u ON i.created_by = u.id
        WHERE i.id = $1`,
       [id],
     );
@@ -245,8 +245,8 @@ router.post('/', requireRole(1), async (req: Request, res: Response) => {
 
     const issueId = uuidv4();
     const issueResult = await query(
-      `INSERT INTO gemba.issues (id, title, description, category_id, area_id, priority, level, source, status, created_by, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'OPEN', $9, NOW(), NOW())
+      `INSERT INTO gemba.issues (id, issue_number, title, description, category_id, area_id, priority, level, source, status, created_by, created_at, updated_at)
+       VALUES ($1, nextval('gemba.issue_number_seq'), $2, $3, $4, $5, $6, $7, $8, 'OPEN', $9, NOW(), NOW())
        RETURNING *`,
       [issueId, title, description || null, category_id || null, area_id || null, priority, level, source, req.user!.id],
     );
@@ -254,7 +254,7 @@ router.post('/', requireRole(1), async (req: Request, res: Response) => {
     // Fetch category name for AI suggestion context
     let categoryName: string | undefined;
     if (category_id) {
-      const catResult = await query('SELECT name FROM gemba.categories WHERE id = $1', [category_id]);
+      const catResult = await query('SELECT name FROM gemba_config.issue_categories WHERE id = $1', [category_id]);
       if (catResult.rows.length > 0) {
         categoryName = catResult.rows[0].name;
       }
@@ -264,16 +264,17 @@ router.post('/', requireRole(1), async (req: Request, res: Response) => {
     const suggestionText = generateAiSuggestion(title, description || '', categoryName);
     const suggestionId = uuidv4();
     await query(
-      `INSERT INTO gemba.ai_suggestions (id, issue_id, suggestion, confidence, created_at)
-       VALUES ($1, $2, $3, $4, NOW())`,
-      [suggestionId, issueId, suggestionText, 0.75],
+      `INSERT INTO gemba.ai_suggestions (id, issue_id, suggested_level, reason, confidence, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [suggestionId, issueId, level, suggestionText, 0.75],
     );
 
     res.status(201).json(success({
       ...issueResult.rows[0],
       ai_suggestion: {
         id: suggestionId,
-        suggestion: suggestionText,
+        suggested_level: level,
+        reason: suggestionText,
         confidence: 0.75,
       },
     }));
@@ -390,7 +391,7 @@ router.post('/:id/escalate', requireRole(1), async (req: Request, res: Response)
     // Insert escalation record
     const escalationId = uuidv4();
     await query(
-      `INSERT INTO gemba.issue_escalations (id, issue_id, from_level, to_level, reason, escalated_by, created_at)
+      `INSERT INTO gemba.issue_escalations (id, issue_id, from_level, to_level, reason, escalated_by, escalated_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
       [escalationId, id, issue.level, target_level, reason, req.user!.id],
     );
@@ -420,10 +421,10 @@ router.post('/:id/escalate', requireRole(1), async (req: Request, res: Response)
 router.post('/:id/resolve', requireRole(2), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { root_cause, corrective_action, preventive_action, impact_description, impact_value } = req.body;
+    const { resolution, downtime_prevented, defects_reduced, cost_savings } = req.body;
 
-    if (!root_cause || !corrective_action) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Root cause and corrective action are required');
+    if (!resolution) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Resolution is required');
     }
 
     // Verify issue exists
@@ -442,20 +443,19 @@ router.post('/:id/resolve', requireRole(2), async (req: Request, res: Response) 
     // Insert resolution record
     const resolutionId = uuidv4();
     await query(
-      `INSERT INTO gemba.issue_resolutions (id, issue_id, root_cause, corrective_action, preventive_action, impact_description, impact_value, resolved_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [resolutionId, id, root_cause, corrective_action, preventive_action || null, impact_description || null, impact_value || null, req.user!.id],
+      `INSERT INTO gemba.issue_resolutions (id, issue_id, resolution, resolved_by, resolved_at, downtime_prevented, defects_reduced, cost_savings)
+       VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7)`,
+      [resolutionId, id, resolution, req.user!.id, downtime_prevented || null, defects_reduced || null, cost_savings || null],
     );
 
     res.json(success({
       issue: updatedIssue.rows[0],
       resolution: {
         id: resolutionId,
-        root_cause,
-        corrective_action,
-        preventive_action,
-        impact_description,
-        impact_value,
+        resolution,
+        downtime_prevented,
+        defects_reduced,
+        cost_savings,
       },
     }));
   } catch (err) {
@@ -518,21 +518,21 @@ router.get('/:id/history', requireRole(2), async (req: Request, res: Response) =
     }
 
     const escalations = await query(
-      `SELECT e.id, e.from_level, e.to_level, e.reason, e.created_at,
-              u.username AS escalated_by_username, u.full_name AS escalated_by_name
+      `SELECT e.id, e.from_level, e.to_level, e.reason, e.escalated_at,
+              u.username AS escalated_by_username, u.display_name AS escalated_by_name
        FROM gemba.issue_escalations e
-       LEFT JOIN gemba.users u ON e.escalated_by = u.id
+       LEFT JOIN gemba_config.users u ON e.escalated_by = u.id
        WHERE e.issue_id = $1
-       ORDER BY e.created_at ASC`,
+       ORDER BY e.escalated_at ASC`,
       [id],
     );
 
     const resolution = await query(
-      `SELECT r.id, r.root_cause, r.corrective_action, r.preventive_action,
-              r.impact_description, r.impact_value, r.created_at,
-              u.username AS resolved_by_username, u.full_name AS resolved_by_name
+      `SELECT r.id, r.resolution, r.resolved_by, r.resolved_at,
+              r.downtime_prevented, r.defects_reduced, r.cost_savings,
+              u.username AS resolved_by_username, u.display_name AS resolved_by_name
        FROM gemba.issue_resolutions r
-       LEFT JOIN gemba.users u ON r.resolved_by = u.id
+       LEFT JOIN gemba_config.users u ON r.resolved_by = u.id
        WHERE r.issue_id = $1`,
       [id],
     );
