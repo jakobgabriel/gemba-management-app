@@ -21,7 +21,8 @@ export default function AnalyticsPage() {
         api.getResolutionTimes().catch(() => ({ data: null })),
         api.getProductionEfficiency({}).catch(() => ({ data: null })),
       ]);
-      setBreakdown(breakRes.data || []);
+      const bd = breakRes.data;
+      setBreakdown(Array.isArray(bd) ? bd : bd?.breakdown || []);
       setResolutionTimes(resRes.data);
       setEfficiency(effRes.data);
     } catch { /* ignore */ }

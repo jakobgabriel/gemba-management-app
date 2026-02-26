@@ -61,11 +61,10 @@ router.get('/entries', requireRole(1), async (req: Request, res: Response) => {
     const total = parseInt(countResult.rows[0].total, 10);
 
     const dataResult = await query(
-      `SELECT se.id, se.entry_date, se.team_id, t.name AS team_name,
+      `SELECT se.id, se.entry_date, se.shift_id, se.team_id, t.name AS team_name,
               se.area_id, a.name AS area_name,
-              se.status, se.observation_type, se.description,
-              se.corrective_action, se.risk_level,
-              se.created_by, se.created_at, se.updated_at
+              se.status, se.notes,
+              se.created_by, se.created_at
        FROM gemba.safety_entries se
        LEFT JOIN gemba.teams t ON se.team_id = t.id
        LEFT JOIN gemba.areas a ON se.area_id = a.id
@@ -84,7 +83,7 @@ router.get('/entries', requireRole(1), async (req: Request, res: Response) => {
       });
       return;
     }
-    throw err;
+    res.status(500).json({ data: null, meta: null, errors: [{ code: 'INTERNAL_ERROR', message: 'Internal server error' }] });
   }
 });
 
@@ -93,34 +92,28 @@ router.post('/entries', requireRole(1), async (req: Request, res: Response) => {
   try {
     const {
       entry_date,
+      shift_id,
       team_id,
       area_id,
-      status = 'SAFE',
-      observation_type,
-      description,
-      corrective_action,
-      risk_level = 'LOW',
+      status = 'safe',
+      notes,
     } = req.body;
 
-    if (!entry_date || !area_id) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'entry_date and area_id are required');
+    if (!entry_date || !shift_id) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'entry_date and shift_id are required');
     }
 
     const id = uuidv4();
     const result = await query(
       `INSERT INTO gemba.safety_entries
-        (id, entry_date, team_id, area_id, status, observation_type, description, corrective_action, risk_level, created_by, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-       ON CONFLICT (entry_date, area_id, team_id)
+        (id, plant_id, entry_date, shift_id, team_id, area_id, status, notes, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+       ON CONFLICT (plant_id, entry_date, shift_id, team_id)
        DO UPDATE SET
          status = EXCLUDED.status,
-         observation_type = EXCLUDED.observation_type,
-         description = EXCLUDED.description,
-         corrective_action = EXCLUDED.corrective_action,
-         risk_level = EXCLUDED.risk_level,
-         updated_at = NOW()
+         notes = EXCLUDED.notes
        RETURNING *`,
-      [id, entry_date, team_id || null, area_id, status, observation_type || null, description || null, corrective_action || null, risk_level, req.user!.id],
+      [id, req.user!.plantId || req.body.plant_id, entry_date, shift_id, team_id || null, area_id || null, status, notes || null, req.user!.id],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -132,7 +125,7 @@ router.post('/entries', requireRole(1), async (req: Request, res: Response) => {
       });
       return;
     }
-    throw err;
+    res.status(500).json({ data: null, meta: null, errors: [{ code: 'INTERNAL_ERROR', message: 'Internal server error' }] });
   }
 });
 
@@ -140,7 +133,7 @@ router.post('/entries', requireRole(1), async (req: Request, res: Response) => {
 router.put('/entries/:id', requireRole(1), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, observation_type, description, corrective_action, risk_level } = req.body;
+    const { status, notes } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -150,28 +143,15 @@ router.put('/entries/:id', requireRole(1), async (req: Request, res: Response) =
       updates.push(`status = $${paramIndex++}`);
       params.push(status);
     }
-    if (observation_type !== undefined) {
-      updates.push(`observation_type = $${paramIndex++}`);
-      params.push(observation_type);
-    }
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      params.push(description);
-    }
-    if (corrective_action !== undefined) {
-      updates.push(`corrective_action = $${paramIndex++}`);
-      params.push(corrective_action);
-    }
-    if (risk_level !== undefined) {
-      updates.push(`risk_level = $${paramIndex++}`);
-      params.push(risk_level);
+    if (notes !== undefined) {
+      updates.push(`notes = $${paramIndex++}`);
+      params.push(notes);
     }
 
     if (updates.length === 0) {
       throw new AppError(400, 'VALIDATION_ERROR', 'No fields to update');
     }
 
-    updates.push('updated_at = NOW()');
     params.push(id);
 
     const result = await query(
@@ -192,7 +172,7 @@ router.put('/entries/:id', requireRole(1), async (req: Request, res: Response) =
       });
       return;
     }
-    throw err;
+    res.status(500).json({ data: null, meta: null, errors: [{ code: 'INTERNAL_ERROR', message: 'Internal server error' }] });
   }
 });
 
@@ -253,24 +233,14 @@ router.get('/stats', requireRole(2), async (req: Request, res: Response) => {
       params,
     );
 
-    // Counts by risk level
-    const byRiskResult = await query(
-      `SELECT se.risk_level, COUNT(*) AS count
-       FROM gemba.safety_entries se
-       ${whereClause}
-       GROUP BY se.risk_level
-       ORDER BY se.risk_level`,
-      params,
-    );
-
     // Monthly trend
     const monthlyResult = await query(
       `SELECT
          TO_CHAR(se.entry_date, 'YYYY-MM') AS month,
          COUNT(*) AS total,
-         COUNT(*) FILTER (WHERE se.status = 'INCIDENT') AS incidents,
-         COUNT(*) FILTER (WHERE se.status = 'NEAR_MISS') AS near_misses,
-         COUNT(*) FILTER (WHERE se.status = 'SAFE') AS safe_observations
+         COUNT(*) FILTER (WHERE se.status = 'incident') AS incidents,
+         COUNT(*) FILTER (WHERE se.status = 'near-miss') AS near_misses,
+         COUNT(*) FILTER (WHERE se.status = 'safe') AS safe_observations
        FROM gemba.safety_entries se
        ${whereClause}
        GROUP BY TO_CHAR(se.entry_date, 'YYYY-MM')
@@ -290,10 +260,6 @@ router.get('/stats', requireRole(2), async (req: Request, res: Response) => {
         status: r.status,
         count: parseInt(r.count, 10),
       })),
-      by_risk_level: byRiskResult.rows.map((r) => ({
-        risk_level: r.risk_level,
-        count: parseInt(r.count, 10),
-      })),
       monthly_trend: monthlyResult.rows.map((r) => ({
         month: r.month,
         total: parseInt(r.total, 10),
@@ -310,7 +276,7 @@ router.get('/stats', requireRole(2), async (req: Request, res: Response) => {
       });
       return;
     }
-    throw err;
+    res.status(500).json({ data: null, meta: null, errors: [{ code: 'INTERNAL_ERROR', message: 'Internal server error' }] });
   }
 });
 

@@ -39,7 +39,8 @@ export default function HandoverPage() {
         api.getCurrentHandoverNotes(),
       ]);
       setNotes(allRes.data || []);
-      setCurrentNotes(currentRes.data || []);
+      const curData = currentRes.data;
+      setCurrentNotes(Array.isArray(curData) ? curData : curData?.notes || []);
     } catch { /* ignore */ }
   };
 

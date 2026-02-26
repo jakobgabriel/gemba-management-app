@@ -6,7 +6,7 @@ import Modal from '../components/common/Modal.js';
 import type { SafetyEntry, SafetyStatus } from '../types/index.js';
 
 const STATUS_COLORS: Record<SafetyStatus, string> = {
-  'safe': '#d4edda', 'near-miss': '#fff3cd', 'incident': '#ffdddd', 'not-reported': '#e9ecef',
+  'safe': '#f0f0f0', 'near-miss': '#e0e0e0', 'incident': '#d0d0d0', 'not-reported': '#e9ecef',
 };
 
 export default function SafetyCrossPage() {
@@ -112,7 +112,7 @@ export default function SafetyCrossPage() {
       {/* Safety Stats Section */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#28a745' }}>{daysWithout}</div>
+          <div className="stat-value">{daysWithout}</div>
           <div className="stat-label">{t('daysWithoutAccident')}</div>
         </div>
         <div className="stat-card">
@@ -120,25 +120,25 @@ export default function SafetyCrossPage() {
           <div className="stat-label">Total Entries</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#28a745' }}>
+          <div className="stat-value">
             {byStatus?.safe ?? entries.filter(e => e.status === 'safe').length}
           </div>
           <div className="stat-label">{t('safe')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#ffc107' }}>
+          <div className="stat-value">
             {byStatus?.['near-miss'] ?? entries.filter(e => e.status === 'near-miss').length}
           </div>
           <div className="stat-label">{t('nearMiss')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#dc3545' }}>
+          <div className="stat-value">
             {byStatus?.incident ?? entries.filter(e => e.status === 'incident').length}
           </div>
           <div className="stat-label">{t('incident')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value" style={{ color: '#6c757d' }}>
+          <div className="stat-value">
             {byStatus?.['not-reported'] ?? entries.filter(e => e.status === 'not-reported').length}
           </div>
           <div className="stat-label">Not Reported</div>
