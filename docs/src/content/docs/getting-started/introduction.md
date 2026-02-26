@@ -42,6 +42,6 @@ The system supports four hierarchical roles:
 
 ## Next Steps
 
-- [Quick Start](/getting-started/quick-start/) — Run the application locally
-- [Architecture Overview](/architecture/overview/) — Understand the system design
-- [Deployment](/deployment/docker/) — Deploy with Docker or Kubernetes
+- [Quick Start](/gemba-management-app/getting-started/quick-start/) — Run the application locally
+- [Architecture Overview](/gemba-management-app/architecture/overview/) — Understand the system design
+- [Deployment](/gemba-management-app/deployment/docker/) — Deploy with Docker or Kubernetes

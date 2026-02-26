@@ -195,7 +195,7 @@ export default function Level1Page() {
             <div className="stat-label">{t('variance')}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: overallEfficiency >= 100 ? 'green' : overallEfficiency >= 80 ? '#ffc107' : 'red' }}>
+            <div className="stat-value">
               {overallEfficiency}%
             </div>
             <div className="stat-label">{t('efficiency')}</div>

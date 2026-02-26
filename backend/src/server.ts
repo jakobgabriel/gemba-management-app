@@ -36,3 +36,11 @@ function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Prevent unhandled errors from crashing the server
+process.on('uncaughtException', (err) => {
+  console.error('[gemba-backend] Uncaught exception:', err.message);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[gemba-backend] Unhandled rejection:', err);
+});

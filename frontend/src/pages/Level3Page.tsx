@@ -52,15 +52,15 @@ export default function Level3Page() {
             <div className="stat-label">Total Issues</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value">{stats.by_status?.OPEN || 0}</div>
+            <div className="stat-value">{Array.isArray(stats.by_status) ? (stats.by_status.find((s: any) => s.status === 'OPEN')?.count ?? 0) : (stats.by_status?.OPEN || 0)}</div>
             <div className="stat-label">{t('open')}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value">{stats.by_status?.ESCALATED || 0}</div>
+            <div className="stat-value">{Array.isArray(stats.by_status) ? (stats.by_status.find((s: any) => s.status === 'ESCALATED')?.count ?? 0) : (stats.by_status?.ESCALATED || 0)}</div>
             <div className="stat-label">{t('escalated')}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value">{stats.by_status?.RESOLVED || 0}</div>
+            <div className="stat-value">{Array.isArray(stats.by_status) ? (stats.by_status.find((s: any) => s.status === 'RESOLVED')?.count ?? 0) : (stats.by_status?.RESOLVED || 0)}</div>
             <div className="stat-label">{t('resolved')}</div>
           </div>
         </div>
@@ -73,10 +73,10 @@ export default function Level3Page() {
             <span className="card-title">Issues by Level</span>
           </div>
           <div className="stats-grid">
-            {Object.entries(stats.by_level as Record<string, number>).map(([level, count]) => (
-              <div key={level} className="stat-card">
-                <div className="stat-value">{count}</div>
-                <div className="stat-label">Level {level}</div>
+            {(Array.isArray(stats.by_level) ? stats.by_level : Object.entries(stats.by_level).map(([l, c]) => ({ level: l, count: c }))).map((item: any) => (
+              <div key={item.level} className="stat-card">
+                <div className="stat-value">{item.count}</div>
+                <div className="stat-label">Level {item.level}</div>
               </div>
             ))}
           </div>

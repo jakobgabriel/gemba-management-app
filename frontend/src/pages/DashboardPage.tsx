@@ -20,7 +20,8 @@ export default function DashboardPage() {
         api.getIssueBreakdown(),
       ]);
       setDashboard(dashRes.data);
-      setBreakdown(breakRes.data || []);
+      const bd = breakRes.data;
+      setBreakdown(Array.isArray(bd) ? bd : bd?.breakdown || []);
     } catch { /* ignore */ }
     setLoading(false);
   };
@@ -37,15 +38,15 @@ export default function DashboardPage() {
             <div className="stat-label">Total Issues</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#ffc107' }}>{dashboard.by_status?.OPEN || 0}</div>
+            <div className="stat-value">{dashboard.open_issues ?? (Array.isArray(dashboard.by_status) ? (dashboard.by_status.find((s: any) => s.status === 'OPEN')?.count ?? 0) : (dashboard.by_status?.OPEN || 0))}</div>
             <div className="stat-label">{t('open')}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#dc3545' }}>{dashboard.by_status?.ESCALATED || 0}</div>
+            <div className="stat-value">{dashboard.escalated_issues ?? (Array.isArray(dashboard.by_status) ? (dashboard.by_status.find((s: any) => s.status === 'ESCALATED')?.count ?? 0) : (dashboard.by_status?.ESCALATED || 0))}</div>
             <div className="stat-label">{t('escalated')}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-value" style={{ color: '#28a745' }}>{dashboard.by_status?.RESOLVED || 0}</div>
+            <div className="stat-value">{Array.isArray(dashboard.by_status) ? (dashboard.by_status.find((s: any) => s.status === 'RESOLVED')?.count ?? 0) : (dashboard.by_status?.RESOLVED || 0)}</div>
             <div className="stat-label">{t('resolved')}</div>
           </div>
         </div>
@@ -88,10 +89,10 @@ export default function DashboardPage() {
             <span className="card-title">Issues by Level</span>
           </div>
           <div className="stats-grid">
-            {Object.entries(dashboard.by_level).map(([level, count]) => (
-              <div key={level} className="stat-card">
-                <div className="stat-value">{count as number}</div>
-                <div className="stat-label">Level {level}</div>
+            {(Array.isArray(dashboard.by_level) ? dashboard.by_level : Object.entries(dashboard.by_level).map(([l, c]) => ({ level: l, count: c }))).map((item: any) => (
+              <div key={item.level} className="stat-card">
+                <div className="stat-value">{item.count}</div>
+                <div className="stat-label">Level {item.level}</div>
               </div>
             ))}
           </div>
