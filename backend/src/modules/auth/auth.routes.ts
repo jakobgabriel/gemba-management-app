@@ -58,6 +58,7 @@ router.post('/login', async (req: Request, res: Response) => {
     );
 
     res.json(success({
+      token: accessToken,
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
@@ -186,18 +187,12 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
       id: user.id,
       username: user.username,
       email: user.email,
-      full_name: user.full_name,
-      role: {
-        id: user.role_id,
-        name: user.role_name,
-        level: user.role_level,
-      },
-      team: user.team_id
-        ? { id: user.team_id, name: user.team_name }
-        : null,
-      plant: user.plant_id
-        ? { id: user.plant_id, name: user.plant_name }
-        : null,
+      display_name: user.full_name,
+      role: user.role_name,
+      role_level: user.role_level,
+      plant_id: user.plant_id,
+      team_id: user.team_id || null,
+      preferred_lang: 'en',
     }));
   } catch (err) {
     if (err instanceof AppError) {

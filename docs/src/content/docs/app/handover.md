@@ -7,6 +7,8 @@ The Shift Handover page enables structured communication between shifts. Outgoin
 
 ## Handover Page
 
+![Shift Handover](../../../assets/screenshots/handover.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Management Tools › Shift Handover                      │

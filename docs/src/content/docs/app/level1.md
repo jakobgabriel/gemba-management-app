@@ -9,6 +9,8 @@ The Level 1 page is the primary workspace for **team members** on the shopfloor.
 
 On first visit, users select their workstation from a grid of available machines.
 
+![Level 1 - Workstation Selection](../../../assets/screenshots/level1-workstation-selection.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Level 1 › Team View                                    │
@@ -36,6 +38,8 @@ On first visit, users select their workstation from a grid of available machines
 ## Workstation Overview & Production Summary
 
 After selecting a workstation, the page shows the machine details and today's production summary.
+
+![Level 1 - Production](../../../assets/screenshots/level1-production.png)
 
 ```
 ┌─────────────────────────────────────────────────────────┐

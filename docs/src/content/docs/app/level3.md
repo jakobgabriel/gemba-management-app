@@ -7,6 +7,8 @@ The Level 3 page gives **plant managers** a holistic view of the entire plant �
 
 ## Plant Overview
 
+![Level 3 - Plant View](../../../assets/screenshots/level3.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Level 3 › Plant View                                   │

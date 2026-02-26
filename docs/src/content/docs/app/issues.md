@@ -9,6 +9,8 @@ The issue management section provides four dedicated pages for tracking the full
 
 Lists all open issues that can be escalated to the next level.
 
+![Escalations](../../../assets/screenshots/escalations.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Issue Management › Escalations                         │
@@ -45,6 +47,8 @@ Lists all open issues that can be escalated to the next level.
 ## Resolution Page
 
 Shows issues that need resolution, with a detailed resolution form.
+
+![Resolution](../../../assets/screenshots/resolution.png)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -103,6 +107,8 @@ The resolution modal includes an **Impact Assessment** section:
 
 The dashboard provides a high-level overview of all issues with breakdowns by category and level.
 
+![Dashboard](../../../assets/screenshots/dashboard.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Issue Management › Dashboard                           │
@@ -144,6 +150,8 @@ Clicking any issue in the "Recent Issues" list opens a **read-only detail modal*
 ## Issue History
 
 A searchable, filterable table of all issues with pagination.
+
+![Issue History](../../../assets/screenshots/issue-history.png)
 
 ```
 ┌─────────────────────────────────────────────────────────┐

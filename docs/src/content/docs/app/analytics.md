@@ -7,6 +7,8 @@ The Analytics page provides data-driven insights into plant operations with an A
 
 ## Analytics Page
 
+![Analytics](../../../assets/screenshots/analytics.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Analytics                                              │

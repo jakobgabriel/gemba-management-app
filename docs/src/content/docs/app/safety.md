@@ -7,6 +7,8 @@ The Safety Cross page provides a visual, calendar-based view of daily safety sta
 
 ## Safety Statistics
 
+![Safety Cross](../../../assets/screenshots/safety-cross.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Management Tools › Safety Cross                        │

@@ -9,6 +9,8 @@ The Gemba Walk page guides area leaders through a structured 5-step observation 
 
 When no walk is active, the page shows a form to start a new one.
 
+![Gemba Walk](../../../assets/screenshots/gemba-walk.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Management Tools › Gemba Walk                          │

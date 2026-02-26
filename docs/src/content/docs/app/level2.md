@@ -7,6 +7,8 @@ The Level 2 page provides **area leaders** with a consolidated view of their are
 
 ## Area Overview
 
+![Level 2 - Area View](../../../assets/screenshots/level2.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Level 2 › Area View                                    │

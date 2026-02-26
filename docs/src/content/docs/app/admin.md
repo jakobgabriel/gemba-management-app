@@ -7,6 +7,8 @@ The Admin Configuration page is only accessible to users with the **admin** role
 
 ## Configuration Tabs
 
+![Admin - Workstations](../../../assets/screenshots/admin-workstations.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Admin › Configuration                                  │
@@ -71,6 +73,8 @@ Manage production workstations (machines).
 
 These tabs share the same simple list interface — a table with a single **Name** column.
 
+![Admin - Areas](../../../assets/screenshots/admin-areas.png)
+
 ```
 ┌─ Categories ──────────────────────────── [Add Category] ┐
 │                                                         │
@@ -93,6 +97,8 @@ The modal for these tabs has a single text input for the item name.
 ## Shifts Tab
 
 Manage shift definitions with start and end times.
+
+![Admin - Shifts](../../../assets/screenshots/admin-shifts.png)
 
 ```
 ┌─ Shifts ───────────────────────────────── [Add Shift]  ─┐
@@ -130,6 +136,8 @@ Manage shift definitions with start and end times.
 ## Users Tab
 
 Manage system users and their roles. Only visible to admin users.
+
+![Admin - Users](../../../assets/screenshots/admin-users.png)
 
 ```
 ┌─ Users ───────────────────────────────── [Add User]  ───┐

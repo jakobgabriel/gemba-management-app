@@ -7,6 +7,8 @@ The login page is the entry point to the application. It supports username/passw
 
 ## Login Screen
 
+![Login page](../../../assets/screenshots/login.png)
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                                                         │
