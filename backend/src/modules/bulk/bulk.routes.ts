@@ -228,34 +228,28 @@ router.post('/production/bulk-create', requireRole(99), async (req: Request, res
       for (const item of items) {
         const {
           workstation_id,
-          shift_id,
-          production_date,
-          hour_slot,
-          target_qty,
-          actual_qty,
-          reject_qty = 0,
-          downtime_minutes = 0,
+          entry_date,
+          hour,
+          target,
+          actual,
           notes,
         } = item;
 
-        if (!workstation_id || !shift_id || !production_date || hour_slot === undefined || target_qty === undefined || actual_qty === undefined) {
-          throw new AppError(400, 'VALIDATION_ERROR', 'Each item must have workstation_id, shift_id, production_date, hour_slot, target_qty, and actual_qty');
+        if (!workstation_id || !entry_date || hour === undefined || target === undefined || actual === undefined) {
+          throw new AppError(400, 'VALIDATION_ERROR', 'Each item must have workstation_id, entry_date, hour, target, and actual');
         }
 
         const id = uuidv4();
         await client.query(
           `INSERT INTO gemba.production_entries
-            (id, workstation_id, shift_id, production_date, hour_slot, target_qty, actual_qty, reject_qty, downtime_minutes, notes, created_by, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-           ON CONFLICT (workstation_id, shift_id, production_date, hour_slot)
+            (id, workstation_id, entry_date, hour, target, actual, notes, created_by, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+           ON CONFLICT (workstation_id, entry_date, hour)
            DO UPDATE SET
-             target_qty = EXCLUDED.target_qty,
-             actual_qty = EXCLUDED.actual_qty,
-             reject_qty = EXCLUDED.reject_qty,
-             downtime_minutes = EXCLUDED.downtime_minutes,
-             notes = EXCLUDED.notes,
-             updated_at = NOW()`,
-          [id, workstation_id, shift_id, production_date, hour_slot, target_qty, actual_qty, reject_qty, downtime_minutes, notes || null, req.user!.id],
+             target = EXCLUDED.target,
+             actual = EXCLUDED.actual,
+             notes = EXCLUDED.notes`,
+          [id, workstation_id, entry_date, hour, target, actual, notes || null, req.user!.id],
         );
         created++;
       }
@@ -296,34 +290,30 @@ router.post('/safety/bulk-create', requireRole(99), async (req: Request, res: Re
       let created = 0;
       for (const item of items) {
         const {
+          plant_id,
           entry_date,
+          shift_id,
           team_id,
           area_id,
           status = 'SAFE',
-          observation_type,
-          description,
-          corrective_action,
-          risk_level = 'LOW',
+          notes,
         } = item;
 
-        if (!entry_date || !area_id) {
-          throw new AppError(400, 'VALIDATION_ERROR', 'Each item must have entry_date and area_id');
+        if (!plant_id || !entry_date || !shift_id || !team_id) {
+          throw new AppError(400, 'VALIDATION_ERROR', 'Each item must have plant_id, entry_date, shift_id, and team_id');
         }
 
         const id = uuidv4();
         await client.query(
           `INSERT INTO gemba.safety_entries
-            (id, entry_date, team_id, area_id, status, observation_type, description, corrective_action, risk_level, created_by, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-           ON CONFLICT (entry_date, area_id, team_id)
+            (id, plant_id, entry_date, shift_id, status, team_id, area_id, notes, created_by, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+           ON CONFLICT (plant_id, entry_date, shift_id, team_id)
            DO UPDATE SET
              status = EXCLUDED.status,
-             observation_type = EXCLUDED.observation_type,
-             description = EXCLUDED.description,
-             corrective_action = EXCLUDED.corrective_action,
-             risk_level = EXCLUDED.risk_level,
-             updated_at = NOW()`,
-          [id, entry_date, team_id || null, area_id, status, observation_type || null, description || null, corrective_action || null, risk_level, req.user!.id],
+             area_id = EXCLUDED.area_id,
+             notes = EXCLUDED.notes`,
+          [id, plant_id, entry_date, shift_id, status, team_id, area_id || null, notes || null, req.user!.id],
         );
         created++;
       }
@@ -375,7 +365,7 @@ router.post('/config/bulk-import', requireRole(99), async (req: Request, res: Re
             const { name, code, area_id, is_active = true } = item;
             if (!name) throw new AppError(400, 'VALIDATION_ERROR', 'Each workstation must have a name');
             await client.query(
-              `INSERT INTO gemba.workstations (id, name, code, area_id, is_active, created_at, updated_at)
+              `INSERT INTO gemba_config.workstations (id, name, code, area_id, is_active, created_at, updated_at)
                VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
               [id, name, code || null, area_id || null, is_active],
             );
@@ -385,7 +375,7 @@ router.post('/config/bulk-import', requireRole(99), async (req: Request, res: Re
             const { name, description, color, is_active = true } = item;
             if (!name) throw new AppError(400, 'VALIDATION_ERROR', 'Each category must have a name');
             await client.query(
-              `INSERT INTO gemba.categories (id, name, description, color, is_active, created_at)
+              `INSERT INTO gemba_config.issue_categories (id, name, description, color, is_active, created_at)
                VALUES ($1, $2, $3, $4, $5, NOW())`,
               [id, name, description || null, color || null, is_active],
             );
@@ -395,7 +385,7 @@ router.post('/config/bulk-import', requireRole(99), async (req: Request, res: Re
             const { name, description, plant_id, is_active = true } = item;
             if (!name) throw new AppError(400, 'VALIDATION_ERROR', 'Each area must have a name');
             await client.query(
-              `INSERT INTO gemba.areas (id, name, description, plant_id, is_active, created_at)
+              `INSERT INTO gemba_config.areas (id, name, description, plant_id, is_active, created_at)
                VALUES ($1, $2, $3, $4, $5, NOW())`,
               [id, name, description || null, plant_id || null, is_active],
             );
@@ -405,7 +395,7 @@ router.post('/config/bulk-import', requireRole(99), async (req: Request, res: Re
             const { name, description, plant_id, is_active = true } = item;
             if (!name) throw new AppError(400, 'VALIDATION_ERROR', 'Each team must have a name');
             await client.query(
-              `INSERT INTO gemba.teams (id, name, description, plant_id, is_active, created_at)
+              `INSERT INTO gemba_config.teams (id, name, description, plant_id, is_active, created_at)
                VALUES ($1, $2, $3, $4, $5, NOW())`,
               [id, name, description || null, plant_id || null, is_active],
             );
@@ -415,7 +405,7 @@ router.post('/config/bulk-import', requireRole(99), async (req: Request, res: Re
             const { name, employee_code, team_id, workstation_id, is_active = true } = item;
             if (!name) throw new AppError(400, 'VALIDATION_ERROR', 'Each operator must have a name');
             await client.query(
-              `INSERT INTO gemba.operators (id, name, employee_code, team_id, workstation_id, is_active, created_at)
+              `INSERT INTO gemba_config.operators (id, name, employee_code, team_id, workstation_id, is_active, created_at)
                VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
               [id, name, employee_code || null, team_id || null, workstation_id || null, is_active],
             );
@@ -509,8 +499,8 @@ router.get('/export/issues', requireRole(2), async (req: Request, res: Response)
               i.area_id, a.name AS area_name,
               i.source, i.created_by, i.created_at, i.updated_at
        FROM gemba.issues i
-       LEFT JOIN gemba.categories c ON i.category_id = c.id
-       LEFT JOIN gemba.areas a ON i.area_id = a.id
+       LEFT JOIN gemba_config.issue_categories c ON i.category_id = c.id
+       LEFT JOIN gemba_config.areas a ON i.area_id = a.id
        ${whereClause}
        ORDER BY i.created_at DESC`,
       params,
@@ -540,11 +530,11 @@ router.get('/export/production', requireRole(2), async (req: Request, res: Respo
     let paramIndex = 1;
 
     if (from_date) {
-      conditions.push(`pe.production_date >= $${paramIndex++}`);
+      conditions.push(`pe.entry_date >= $${paramIndex++}`);
       params.push(from_date);
     }
     if (to_date) {
-      conditions.push(`pe.production_date <= $${paramIndex++}`);
+      conditions.push(`pe.entry_date <= $${paramIndex++}`);
       params.push(to_date);
     }
     if (workstation_id) {
@@ -561,14 +551,14 @@ router.get('/export/production', requireRole(2), async (req: Request, res: Respo
     const dataResult = await query(
       `SELECT pe.id, pe.workstation_id, w.name AS workstation_name,
               pe.shift_id, s.name AS shift_name,
-              pe.production_date, pe.hour_slot, pe.target_qty, pe.actual_qty,
-              pe.reject_qty, pe.downtime_minutes, pe.notes,
-              pe.created_by, pe.created_at, pe.updated_at
+              pe.entry_date, pe.hour, pe.target, pe.actual,
+              pe.notes,
+              pe.created_by, pe.created_at
        FROM gemba.production_entries pe
-       LEFT JOIN gemba.workstations w ON pe.workstation_id = w.id
-       LEFT JOIN gemba.shifts s ON pe.shift_id = s.id
+       LEFT JOIN gemba_config.workstations w ON pe.workstation_id = w.id
+       LEFT JOIN gemba_config.shift_definitions s ON pe.shift_id = s.id
        ${whereClause}
-       ORDER BY pe.production_date DESC, pe.hour_slot ASC`,
+       ORDER BY pe.entry_date DESC, pe.hour ASC`,
       params,
     );
 
@@ -615,14 +605,14 @@ router.get('/export/safety', requireRole(2), async (req: Request, res: Response)
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const dataResult = await query(
-      `SELECT se.id, se.entry_date, se.team_id, t.name AS team_name,
+      `SELECT se.id, se.plant_id, se.entry_date, se.shift_id,
+              se.team_id, t.name AS team_name,
               se.area_id, a.name AS area_name,
-              se.status, se.observation_type, se.description,
-              se.corrective_action, se.risk_level,
-              se.created_by, se.created_at, se.updated_at
+              se.status, se.notes,
+              se.created_by, se.created_at
        FROM gemba.safety_entries se
-       LEFT JOIN gemba.teams t ON se.team_id = t.id
-       LEFT JOIN gemba.areas a ON se.area_id = a.id
+       LEFT JOIN gemba_config.teams t ON se.team_id = t.id
+       LEFT JOIN gemba_config.areas a ON se.area_id = a.id
        ${whereClause}
        ORDER BY se.entry_date DESC, se.created_at DESC`,
       params,
@@ -648,12 +638,12 @@ router.get('/export/config', requireRole(99), async (req: Request, res: Response
     const { entity } = req.query;
 
     const allowedEntities: Record<string, string> = {
-      workstations: `SELECT id, name, code, area_id, is_active, created_at, updated_at FROM gemba.workstations ORDER BY name ASC`,
-      categories: `SELECT id, name, description, color, is_active, created_at FROM gemba.categories ORDER BY name ASC`,
-      areas: `SELECT id, name, description, plant_id, is_active, created_at FROM gemba.areas ORDER BY name ASC`,
-      teams: `SELECT id, name, description, plant_id, is_active, created_at FROM gemba.teams ORDER BY name ASC`,
-      operators: `SELECT id, name, employee_code, team_id, workstation_id, is_active, created_at FROM gemba.operators ORDER BY name ASC`,
-      shifts: `SELECT id, name, start_time, end_time, is_active, created_at FROM gemba.shifts ORDER BY start_time ASC`,
+      workstations: `SELECT id, name, code, area_id, is_active, created_at, updated_at FROM gemba_config.workstations ORDER BY name ASC`,
+      categories: `SELECT id, name, description, color, is_active, created_at FROM gemba_config.issue_categories ORDER BY name ASC`,
+      areas: `SELECT id, name, description, plant_id, is_active, created_at FROM gemba_config.areas ORDER BY name ASC`,
+      teams: `SELECT id, name, description, plant_id, is_active, created_at FROM gemba_config.teams ORDER BY name ASC`,
+      operators: `SELECT id, name, employee_code, team_id, workstation_id, is_active, created_at FROM gemba_config.operators ORDER BY name ASC`,
+      shifts: `SELECT id, name, start_time, end_time, is_active, created_at FROM gemba_config.shift_definitions ORDER BY start_time ASC`,
     };
 
     if (!entity || !allowedEntities[entity as string]) {
@@ -686,11 +676,11 @@ router.get('/export/gemba-walks', requireRole(2), async (req: Request, res: Resp
     let paramIndex = 1;
 
     if (from_date) {
-      conditions.push(`gw.created_at >= $${paramIndex++}`);
+      conditions.push(`gw.started_at >= $${paramIndex++}`);
       params.push(from_date);
     }
     if (to_date) {
-      conditions.push(`gw.created_at <= $${paramIndex++}`);
+      conditions.push(`gw.started_at <= $${paramIndex++}`);
       params.push(to_date);
     }
     if (status) {
@@ -701,14 +691,14 @@ router.get('/export/gemba-walks', requireRole(2), async (req: Request, res: Resp
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const walksResult = await query(
-      `SELECT gw.id, gw.title, gw.status, gw.target_areas, gw.focus, gw.participants,
+      `SELECT gw.id, gw.focus, gw.status, gw.target_areas, gw.participants,
               gw.current_step, gw.team_feedback, gw.duration_min,
-              gw.leader_id, u.username AS leader_username, u.full_name AS leader_name,
-              gw.created_at, gw.completed_at
+              gw.leader_id, u.username AS leader_username, u.display_name AS leader_name,
+              gw.started_at, gw.completed_at
        FROM gemba.gemba_walks gw
-       LEFT JOIN gemba.users u ON gw.leader_id = u.id
+       LEFT JOIN gemba_config.users u ON gw.leader_id = u.id
        ${whereClause}
-       ORDER BY gw.created_at DESC`,
+       ORDER BY gw.started_at DESC`,
       params,
     );
 
@@ -716,10 +706,10 @@ router.get('/export/gemba-walks', requireRole(2), async (req: Request, res: Resp
     const walks = [];
     for (const walk of walksResult.rows) {
       const findingsResult = await query(
-        `SELECT gf.id, gf.observation, gf.finding_type, gf.severity, gf.area_id,
-                a.name AS area_name, gf.photo_url, gf.created_at
+        `SELECT gf.id, gf.observation, gf.finding_type, gf.area_id,
+                a.name AS area_name, gf.created_at
          FROM gemba.gemba_walk_findings gf
-         LEFT JOIN gemba.areas a ON gf.area_id = a.id
+         LEFT JOIN gemba_config.areas a ON gf.area_id = a.id
          WHERE gf.walk_id = $1
          ORDER BY gf.created_at ASC`,
         [walk.id],

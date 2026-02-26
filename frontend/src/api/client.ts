@@ -180,19 +180,19 @@ class ApiClient {
   // ========================================================================
 
   getProductionEntries(params?: Record<string, string | number | boolean | undefined>) {
-    return this.get<ProductionEntry[]>('/production/entries', params);
+    return this.get<ProductionEntry[]>('/production', params);
   }
 
   createProductionEntry(data: Partial<ProductionEntry>) {
-    return this.post<ProductionEntry>('/production/entries', data);
+    return this.post<ProductionEntry>('/production', data);
   }
 
   updateProductionEntry(id: string, data: Partial<ProductionEntry>) {
-    return this.put<ProductionEntry>(`/production/entries/${id}`, data);
+    return this.put<ProductionEntry>(`/production/${id}`, data);
   }
 
-  getProductionSummary(params?: Record<string, string | number | boolean | undefined>) {
-    return this.get<Record<string, unknown>>('/production/summary', params);
+  getProductionByWorkstation(workstationId: string, params?: Record<string, string | number | boolean | undefined>) {
+    return this.get<Record<string, unknown>>(`/production/by-workstation/${workstationId}`, params);
   }
 
   // ========================================================================
@@ -351,12 +351,12 @@ class ApiClient {
     return this.get<Record<string, unknown>>('/analytics/production/efficiency', params);
   }
 
-  aiQuery(query: string) {
-    return this.post<{ answer: string; data?: unknown }>('/analytics/ai/query', { query });
+  aiQuery(question: string) {
+    return this.post<{ query: string; keywords: string[]; total_results: number; results: unknown[] }>('/analytics/ai/query', { question });
   }
 
-  aiReport(type: string) {
-    return this.post<{ report: string }>('/analytics/ai/report', { type });
+  aiReport(report_type: string) {
+    return this.post<{ report_type: string; summary: string; data: unknown }>('/analytics/ai/report', { report_type });
   }
 
   // ========================================================================
@@ -388,7 +388,7 @@ class ApiClient {
   // ========================================================================
 
   deleteProductionEntry(id: string) {
-    return this.delete<void>(`/production/entries/${id}`);
+    return this.delete<void>(`/production/${id}`);
   }
 
   // ========================================================================

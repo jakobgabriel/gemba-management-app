@@ -22,8 +22,8 @@ router.post('/login', async (req: Request, res: Response) => {
     const result = await query(
       `SELECT u.id, u.username, u.password_hash, u.plant_id,
               r.id AS role_id, r.name AS role_name, r.level AS role_level
-       FROM gemba.users u
-       JOIN gemba.roles r ON u.role_id = r.id
+       FROM gemba_config.users u
+       JOIN gemba_config.roles r ON u.role_id = r.id
        WHERE u.username = $1 AND u.is_active = true`,
       [username],
     );
@@ -106,8 +106,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const result = await query(
       `SELECT u.id, u.username, u.plant_id,
               r.name AS role_name, r.level AS role_level
-       FROM gemba.users u
-       JOIN gemba.roles r ON u.role_id = r.id
+       FROM gemba_config.users u
+       JOIN gemba_config.roles r ON u.role_id = r.id
        WHERE u.id = $1 AND u.is_active = true`,
       [decoded.id],
     );
@@ -165,14 +165,14 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     const result = await query(
-      `SELECT u.id, u.username, u.email, u.full_name, u.plant_id,
+      `SELECT u.id, u.username, u.email, u.display_name, u.plant_id,
               r.id AS role_id, r.name AS role_name, r.level AS role_level,
               t.id AS team_id, t.name AS team_name,
               p.id AS plant_id, p.name AS plant_name
-       FROM gemba.users u
-       JOIN gemba.roles r ON u.role_id = r.id
-       LEFT JOIN gemba.teams t ON u.team_id = t.id
-       LEFT JOIN gemba.plants p ON u.plant_id = p.id
+       FROM gemba_config.users u
+       JOIN gemba_config.roles r ON u.role_id = r.id
+       LEFT JOIN gemba_config.teams t ON u.team_id = t.id
+       LEFT JOIN gemba_config.plants p ON u.plant_id = p.id
        WHERE u.id = $1`,
       [userId],
     );
@@ -187,7 +187,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
       id: user.id,
       username: user.username,
       email: user.email,
-      display_name: user.full_name,
+      display_name: user.display_name,
       role: user.role_name,
       role_level: user.role_level,
       plant_id: user.plant_id,

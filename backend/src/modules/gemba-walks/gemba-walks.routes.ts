@@ -34,11 +34,11 @@ router.get('/', requireRole(2), async (req: Request, res: Response) => {
       params.push(status);
     }
     if (from_date) {
-      conditions.push(`gw.created_at >= $${paramIndex++}`);
+      conditions.push(`gw.started_at >= $${paramIndex++}`);
       params.push(from_date);
     }
     if (to_date) {
-      conditions.push(`gw.created_at <= $${paramIndex++}`);
+      conditions.push(`gw.started_at <= $${paramIndex++}`);
       params.push(to_date);
     }
 
@@ -51,14 +51,14 @@ router.get('/', requireRole(2), async (req: Request, res: Response) => {
     const total = parseInt(countResult.rows[0].total, 10);
 
     const dataResult = await query(
-      `SELECT gw.id, gw.title, gw.status, gw.target_areas, gw.focus, gw.participants,
+      `SELECT gw.id, gw.status, gw.target_areas, gw.focus, gw.participants,
               gw.current_step, gw.team_feedback, gw.duration_min,
-              gw.leader_id, u.username AS leader_username, u.full_name AS leader_name,
-              gw.created_at, gw.completed_at
+              gw.leader_id, u.username AS leader_username, u.display_name AS leader_name,
+              gw.started_at, gw.completed_at
        FROM gemba.gemba_walks gw
-       LEFT JOIN gemba.users u ON gw.leader_id = u.id
+       LEFT JOIN gemba_config.users u ON gw.leader_id = u.id
        ${whereClause}
-       ORDER BY gw.created_at DESC
+       ORDER BY gw.started_at DESC
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       [...params, perPage, offset],
     );
@@ -82,12 +82,12 @@ router.get('/:id', requireRole(2), async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const walkResult = await query(
-      `SELECT gw.id, gw.title, gw.status, gw.target_areas, gw.focus, gw.participants,
+      `SELECT gw.id, gw.status, gw.target_areas, gw.focus, gw.participants,
               gw.current_step, gw.team_feedback, gw.duration_min,
-              gw.leader_id, u.username AS leader_username, u.full_name AS leader_name,
-              gw.created_at, gw.completed_at
+              gw.leader_id, u.username AS leader_username, u.display_name AS leader_name,
+              gw.started_at, gw.completed_at
        FROM gemba.gemba_walks gw
-       LEFT JOIN gemba.users u ON gw.leader_id = u.id
+       LEFT JOIN gemba_config.users u ON gw.leader_id = u.id
        WHERE gw.id = $1`,
       [id],
     );
@@ -97,10 +97,10 @@ router.get('/:id', requireRole(2), async (req: Request, res: Response) => {
     }
 
     const findingsResult = await query(
-      `SELECT gf.id, gf.observation, gf.finding_type, gf.severity, gf.area_id,
-              a.name AS area_name, gf.photo_url, gf.created_at
+      `SELECT gf.id, gf.observation, gf.finding_type, gf.area_id,
+              a.name AS area_name, gf.created_at
        FROM gemba.gemba_walk_findings gf
-       LEFT JOIN gemba.areas a ON gf.area_id = a.id
+       LEFT JOIN gemba_config.areas a ON gf.area_id = a.id
        WHERE gf.walk_id = $1
        ORDER BY gf.created_at ASC`,
       [id],
@@ -134,19 +134,19 @@ router.get('/:id', requireRole(2), async (req: Request, res: Response) => {
 // POST / - Start new gemba walk
 router.post('/', requireRole(2), async (req: Request, res: Response) => {
   try {
-    const { title, target_areas, focus, participants } = req.body;
+    const { target_areas, focus, participants } = req.body;
 
-    if (!title) {
-      throw new AppError(400, 'VALIDATION_ERROR', 'Title is required');
+    if (!focus) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Focus is required');
     }
 
     const id = uuidv4();
     const result = await query(
       `INSERT INTO gemba.gemba_walks
-        (id, title, status, target_areas, focus, participants, current_step, leader_id, created_at)
-       VALUES ($1, $2, 'in_progress', $3, $4, $5, 1, $6, NOW())
+        (id, status, target_areas, focus, participants, current_step, leader_id, started_at)
+       VALUES ($1, 'in_progress', $2, $3, $4, 1, $5, NOW())
        RETURNING *`,
-      [id, title, JSON.stringify(target_areas || []), focus || null, JSON.stringify(participants || []), req.user!.id],
+      [id, JSON.stringify(target_areas || []), focus, JSON.stringify(participants || []), req.user!.id],
     );
 
     res.status(201).json(success(result.rows[0]));
@@ -166,7 +166,7 @@ router.post('/', requireRole(2), async (req: Request, res: Response) => {
 router.put('/:id', requireRole(2), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { current_step, team_feedback, title, focus, target_areas, participants } = req.body;
+    const { current_step, team_feedback, focus, target_areas, participants } = req.body;
 
     const updates: string[] = [];
     const params: unknown[] = [];
@@ -179,10 +179,6 @@ router.put('/:id', requireRole(2), async (req: Request, res: Response) => {
     if (team_feedback !== undefined) {
       updates.push(`team_feedback = $${paramIndex++}`);
       params.push(team_feedback);
-    }
-    if (title !== undefined) {
-      updates.push(`title = $${paramIndex++}`);
-      params.push(title);
     }
     if (focus !== undefined) {
       updates.push(`focus = $${paramIndex++}`);
@@ -247,7 +243,7 @@ router.post('/:id/complete', requireRole(2), async (req: Request, res: Response)
     // Calculate duration if not provided
     let finalDuration = duration_min;
     if (!finalDuration) {
-      const createdAt = new Date(walkResult.rows[0].created_at);
+      const createdAt = new Date(walkResult.rows[0].started_at);
       const now = new Date();
       finalDuration = Math.round((now.getTime() - createdAt.getTime()) / (1000 * 60));
     }
@@ -277,7 +273,7 @@ router.post('/:id/complete', requireRole(2), async (req: Request, res: Response)
 router.post('/:id/findings', requireRole(2), async (req: Request, res: Response) => {
   try {
     const { id: walkId } = req.params;
-    const { observation, finding_type, severity, area_id, photo_url } = req.body;
+    const { observation, finding_type, area_id } = req.body;
 
     if (!observation) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Observation is required');
@@ -300,10 +296,10 @@ router.post('/:id/findings', requireRole(2), async (req: Request, res: Response)
     const findingId = uuidv4();
     const result = await query(
       `INSERT INTO gemba.gemba_walk_findings
-        (id, walk_id, observation, finding_type, severity, area_id, photo_url, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        (id, walk_id, observation, finding_type, area_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
        RETURNING *`,
-      [findingId, walkId, observation, finding_type || 'observation', severity || 'LOW', area_id || null, photo_url || null],
+      [findingId, walkId, observation, finding_type || 'observation', area_id || null],
     );
 
     res.status(201).json(success(result.rows[0]));
