@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import { config } from './config.js';
 import { authenticate } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { swaggerSpec } from './swagger.js';
 
 // Route modules
 import authRoutes from './modules/auth/routes.js';
@@ -23,6 +25,17 @@ const app = express();
 // ---------------------------------------------------------------------------
 app.use(cors({ origin: config.corsOrigin }));
 app.use(express.json());
+
+// ---------------------------------------------------------------------------
+// Swagger UI – API documentation
+// ---------------------------------------------------------------------------
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Gemba API Docs',
+}));
+app.get('/api-docs.json', (_req, res) => {
+  res.json(swaggerSpec);
+});
 
 // ---------------------------------------------------------------------------
 // Health-check endpoints
